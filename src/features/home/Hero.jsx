@@ -19,12 +19,13 @@ export function Hero({ settings, reducedMotion }) {
   const [activeBackdrop, setActiveBackdrop] = useState(0);
 
   useEffect(() => {
-    if (reducedMotion) return undefined;
+    // Reduced motion disables the visual animation, not the content rotation.
+    // Some phones expose this preference by default, which must not freeze the hero.
     const intervalId = window.setInterval(() => {
       setActiveBackdrop((current) => (current + 1) % heroBackdrops.length);
-    }, 5000);
+    }, 3500);
     return () => window.clearInterval(intervalId);
-  }, [reducedMotion]);
+  }, []);
 
   return <section className="hero" id="inicio" aria-labelledby="hero-title">
     <div className="hero__backdrops" aria-hidden="true">

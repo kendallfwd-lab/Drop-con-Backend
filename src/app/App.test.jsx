@@ -42,10 +42,10 @@ describe('catalog experience', () => {
     expect(screen.queryByText('La tecnología que quieres, calidad en cada detalle.')).not.toBeInTheDocument();
   });
 
-  it('changes the hero product background every five seconds', () => {
+  it('changes the hero product background every three and a half seconds', () => {
     const intervalCallbacks = [];
     const intervalSpy = vi.spyOn(window, 'setInterval').mockImplementation((callback, delay) => {
-      if (delay === 5000) intervalCallbacks.push(callback);
+      if (delay === 3500) intervalCallbacks.push(callback);
       return 1;
     });
     try {
@@ -59,11 +59,11 @@ describe('catalog experience', () => {
     }
   });
 
-  it('does not rotate hero images when reduced motion is requested', () => {
+  it('keeps rotating hero content when reduced motion is requested', () => {
     const intervalSpy = vi.spyOn(window, 'setInterval').mockReturnValue(1);
     try {
       render(<Hero settings={data.settings} reducedMotion />);
-      expect(intervalSpy).not.toHaveBeenCalled();
+      expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 3500);
     } finally {
       intervalSpy.mockRestore();
     }

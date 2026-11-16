@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { Link } from 'react-router';
 import { Brand, WhatsAppLink } from '../common/Shared.jsx';
+import { ROUTES } from '../../routes/routePaths.js';
+
+const sectionRoutes = { inicio: ROUTES.HOME, productos: ROUTES.CATALOG, comparar: ROUTES.COMPARISON, promociones: ROUTES.PROMOTIONS };
 
 export default function Header({ settings, sections, cartCount, onOpenCart, cartButtonRef }) {
   const [open, setOpen] = useState(false);
@@ -20,9 +24,9 @@ export default function Header({ settings, sections, cartCount, onOpenCart, cart
 
   return <header className="site-header">
     <div className="container site-header__inner">
-      <a href="#inicio" className="brand-link" onClick={() => setOpen(false)}><Brand /></a>
+      <Link to={ROUTES.HOME} className="brand-link" onClick={() => setOpen(false)}><Brand /></Link>
       <nav className={`primary-nav ${open ? 'primary-nav--open' : ''}`} id="main-navigation" aria-label="Navegación principal">
-        {sections.filter((item) => item.enabled).map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => setOpen(false)}>{item.label}</a>)}
+        {sections.filter((item) => item.enabled).map((item) => <Link key={item.id} to={sectionRoutes[item.id] || ROUTES.HOME} onClick={() => setOpen(false)}>{item.label}</Link>)}
       </nav>
       <div className="site-header__actions">
         <WhatsAppLink phone={settings.whatsappPhone} className="button button--whatsapp header-whatsapp"><span className="header-whatsapp__long">Escríbenos</span><span className="header-whatsapp__short">WhatsApp</span></WhatsAppLink>

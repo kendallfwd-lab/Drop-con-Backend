@@ -7,6 +7,12 @@ import '@fontsource/inter/latin-700.css';
 import '@fontsource/inter/latin-800.css';
 import App from './app/App.jsx';
 import './styles/index.css';
+import './styles/variables.css';
+import './styles/global.css';
+import './styles/layout.css';
+import './styles/catalog.css';
+import './styles/cart.css';
+import './styles/comparison.css';
 import './styles/promotions.css';
 
 createRoot(document.getElementById('root')).render(
