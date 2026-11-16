@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { Menu, X } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { Brand, WhatsAppLink } from '../common/Shared.jsx';
 import { ROUTES } from '../../routes/routePaths.js';
+import useScrollDirection from '../../hooks/useScrollDirection.js';
 
 const sectionRoutes = { inicio: ROUTES.HOME, productos: ROUTES.CATALOG, comparar: ROUTES.COMPARISON, promociones: ROUTES.PROMOTIONS };
 
 export default function Header({ settings, sections, cartCount, onOpenCart, cartButtonRef }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
+  const { pathname } = useLocation();
+  const { isVisible, show } = useScrollDirection({ disabled: open });
+
+  useEffect(() => {
+    show();
+  }, [pathname, show]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -22,7 +29,10 @@ export default function Header({ settings, sections, cartCount, onOpenCart, cart
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
-  return <header className="site-header">
+  return <header
+    className={`site-header ${isVisible ? 'site-header--visible' : 'site-header--hidden'}`}
+    onFocusCapture={show}
+  >
     <div className="container site-header__inner">
       <Link to={ROUTES.HOME} className="brand-link" onClick={() => setOpen(false)}><Brand /></Link>
       <nav className={`primary-nav ${open ? 'primary-nav--open' : ''}`} id="main-navigation" aria-label="Navegación principal">
