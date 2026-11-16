@@ -35,6 +35,16 @@ describe('useScrollDirection', () => {
     });
   };
 
+  const touchAt = (type, clientY) => {
+    act(() => {
+      const event = new Event(type);
+      Object.defineProperty(event, 'touches', {
+        value: type === 'touchend' ? [] : [{ clientY }],
+      });
+      window.dispatchEvent(event);
+    });
+  };
+
   it('hides while scrolling down and returns after a short upward movement', () => {
     render(<ScrollState />);
     expect(screen.getByText('none:visible')).toBeInTheDocument();
@@ -59,5 +69,19 @@ describe('useScrollDirection', () => {
     rerender(<ScrollState />);
     scrollTo(0);
     expect(screen.getByText('up:visible')).toBeInTheDocument();
+  });
+
+  it('reacts immediately to mobile touch gestures', () => {
+    render(<ScrollState />);
+    window.scrollY = 120;
+
+    touchAt('touchstart', 240);
+    touchAt('touchmove', 220);
+    expect(screen.getByText('down:hidden')).toBeInTheDocument();
+
+    touchAt('touchstart', 220);
+    touchAt('touchmove', 226);
+    expect(screen.getByText('up:visible')).toBeInTheDocument();
+    touchAt('touchend');
   });
 });

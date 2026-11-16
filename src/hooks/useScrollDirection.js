@@ -25,11 +25,31 @@ export default function useScrollDirection({
   useEffect(() => {
     lastScrollY.current = Math.max(window.scrollY || 0, 0);
     accumulatedDistance.current = 0;
+    let lastTouchY = null;
 
     if (disabled) {
       show();
       return undefined;
     }
+
+    const applyDirection = (nextDirection, distance) => {
+      if (nextDirection !== lastDirection.current) {
+        lastDirection.current = nextDirection;
+        accumulatedDistance.current = 0;
+      }
+
+      accumulatedDistance.current += distance;
+      const threshold = nextDirection === 'down' ? hideThreshold : showThreshold;
+      if (accumulatedDistance.current < threshold) return;
+
+      accumulatedDistance.current = 0;
+      setState((current) => {
+        const isVisible = nextDirection === 'up';
+        return current.direction === nextDirection && current.isVisible === isVisible
+          ? current
+          : { direction: nextDirection, isVisible };
+      });
+    };
 
     const updateDirection = () => {
       frameId.current = null;
@@ -43,24 +63,7 @@ export default function useScrollDirection({
       }
 
       if (Math.abs(delta) < 1) return;
-
-      const nextDirection = delta > 0 ? 'down' : 'up';
-      if (nextDirection !== lastDirection.current) {
-        lastDirection.current = nextDirection;
-        accumulatedDistance.current = 0;
-      }
-
-      accumulatedDistance.current += Math.abs(delta);
-      const threshold = nextDirection === 'down' ? hideThreshold : showThreshold;
-      if (accumulatedDistance.current < threshold) return;
-
-      accumulatedDistance.current = 0;
-      setState((current) => {
-        const isVisible = nextDirection === 'up';
-        return current.direction === nextDirection && current.isVisible === isVisible
-          ? current
-          : { direction: nextDirection, isVisible };
-      });
+      applyDirection(delta > 0 ? 'down' : 'up', Math.abs(delta));
     };
 
     const onScroll = () => {
@@ -68,9 +71,43 @@ export default function useScrollDirection({
       frameId.current = window.requestAnimationFrame(updateDirection);
     };
 
+    const onTouchStart = (event) => {
+      lastTouchY = event.touches[0]?.clientY ?? null;
+      accumulatedDistance.current = 0;
+      lastDirection.current = 'none';
+    };
+
+    const onTouchMove = (event) => {
+      const currentTouchY = event.touches[0]?.clientY;
+      if (lastTouchY === null || currentTouchY === undefined) return;
+
+      const fingerDelta = currentTouchY - lastTouchY;
+      lastTouchY = currentTouchY;
+
+      if (Math.max(window.scrollY || 0, 0) <= topOffset) {
+        show();
+        return;
+      }
+
+      if (Math.abs(fingerDelta) < 1) return;
+      applyDirection(fingerDelta > 0 ? 'up' : 'down', Math.abs(fingerDelta));
+    };
+
+    const onTouchEnd = () => {
+      lastTouchY = null;
+    };
+
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
       if (frameId.current !== null) window.cancelAnimationFrame(frameId.current);
       frameId.current = null;
     };
