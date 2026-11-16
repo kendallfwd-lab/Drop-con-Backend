@@ -121,10 +121,10 @@
 .footer__links svg{color:#5f98ff}
 .footer__main>.button{box-shadow:0 12px 28px rgba(13,158,73,.18)}
 .footer__bottom{padding-block:22px;border-top:1px solid rgba(255,255,255,.09);color:#7f8da2}
-.footer__credit{text-align:right}.footer__credit a{color:#b9c8dc;transition:color .2s}.footer__credit a:hover,.footer__credit a:focus-visible{color:#fff}.footer__credit strong{font-weight:700}
+.footer__credit{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:4px;text-align:right}.footer__credit a{color:#b9c8dc;transition:color .2s}.footer__credit a:hover,.footer__credit a:focus-visible{color:#fff}.footer__credit strong{font-weight:700}.footer__github-url{text-decoration:underline;text-decoration-color:rgba(185,200,220,.45);text-underline-offset:3px}.footer__developer-role{flex-basis:100%;color:#94a3b8}
 @media(max-width:1023px){.footer__main{grid-template-columns:1fr auto}.footer__links{gap:9px}}
 @media(max-width:767px){.footer__main{gap:25px;padding-block:42px}.footer__links>*{background:transparent;border:0;padding:2px 0}.footer__links a:hover{background:transparent;border-color:transparent}}
-@media(max-width:639px){.footer__main{display:flex}.footer__bottom{padding-block:19px}.footer__credit{text-align:left;line-height:1.6}.footer-wordmark{font-size:25px}}
+@media(max-width:639px){.footer__main{display:flex}.footer__bottom{padding-block:19px}.footer__credit{justify-content:flex-start;text-align:left;line-height:1.6}.footer__github-url{overflow-wrap:anywhere}.footer-wordmark{font-size:25px}}
 .detail-showcase{isolation:isolate;background:radial-gradient(circle at 52% 43%,#fff 0%,#f6f8fb 48%,#e9eef5 100%)}
 .detail-showcase::before{z-index:-1;border-color:rgba(109,137,178,.13)}
 .detail-showcase::after{z-index:-1;border-color:rgba(109,137,178,.1)}
