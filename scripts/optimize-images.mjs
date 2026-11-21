@@ -2,7 +2,7 @@ import sharp from 'sharp';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-for (const folder of ['public/images/products', 'public/images/hero']) {
+for (const folder of ['frontend/public/images/products', 'frontend/public/images/hero']) {
   for (const name of await readdir(folder)) {
     if (!name.endsWith('.png')) continue;
     const input = join(folder, name);

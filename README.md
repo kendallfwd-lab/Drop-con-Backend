@@ -1,65 +1,62 @@
-# Drop_Zone CR
+# Drop Zone CR
 
-Catálogo editorial de audio y accesorios creado con React 19, JavaScript, Vite, CSS, Motion, Lucide y `json-server`. Incluye comparación visual de dos modelos con diferencia de precio. No procesa compras ni envía mensajes: los enlaces abren WhatsApp con una consulta preparada para que la persona decida si la envía.
+Aplicación de catálogo y pedidos de Drop Zone CR organizada como monorepo con npm workspaces. El frontend React/Vite consume la API Express; el backend conserva las herramientas administrativas, CRM y recuperación de información (RAG) de las otras versiones locales.
 
-## Ejecutar
+## Requisitos
 
-Requiere Node.js LTS (20 o superior) y npm.
+- Node.js 22 o superior (incluye `--env-file-if-exists`).
+- npm.
+- MySQL compatible con la versión indicada en `backend/database/migrations/001_initial_schema.sql`.
 
-```bash
-npm install
-```
+## Inicio local
 
-En una terminal:
+1. Copiá `.env.example` a `.env` y completá las variables de MySQL (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`). El backend no arranca sin conexión configurada.
+2. Instalá las dependencias desde la raíz y prepará el esquema y el catálogo inicial:
 
-```bash
-npm run api
-```
+   ```sh
+   npm install
+   npm run db:migrate
+   ```
 
-En otra:
+3. En una terminal, iniciá frontend y API juntos:
 
-```bash
-npm run dev
-```
+   ```sh
+   npm run dev
+   ```
 
-Abrí la URL que indique Vite, normalmente `http://127.0.0.1:5173/`. La API local usa el puerto 3001. Si no está disponible, la página muestra un aviso y utiliza una copia de `db.json` incluida en el build. En una web estática publicada esa copia queda congelada hasta la siguiente compilación; `json-server` no es una base de datos persistente de producción.
+   Frontend: `http://127.0.0.1:5173`. API: `http://127.0.0.1:3001/api/health`.
 
-## Estructura del código
+También se pueden iniciar por separado con `npm run dev:frontend` y `npm run dev:backend`. Si Vite encuentra ocupado el puerto 5173, detené el servidor anterior o abrí la URL que Vite indique.
 
-- `src/app/App.jsx` conserva la composición de la página y coordina URL, carga de datos y carrito.
-- `src/components/layout/` contiene navegación y footer.
-- `src/components/common/` contiene piezas compartidas como marca, WhatsApp, imágenes y cantidad.
-- `src/components/ui/` contiene controles visuales accesibles.
-- `src/features/home/` contiene el hero y su carrusel de imágenes.
-- `src/features/catalog/` contiene catálogo, detalle, filtros derivados y reglas del modelo.
-- `src/features/cart/` contiene carrito, descuentos y su drawer.
-- `src/features/comparison/` contiene comparador y reglas de comparación.
-- `src/features/promotions/` contiene carrusel, configuradores, precios y mensajes promocionales.
-- `src/data/` contiene datos de respaldo y adaptadores de datos.
-- `src/styles/index.css` mantiene estilos generales; `src/styles/promotions.css` contiene el bloque visual del carrusel promocional.
-- Las pruebas se mantienen junto al módulo que validan para facilitar su mantenimiento.
+Para crear el primer usuario administrativo, configurá `ADMIN_EMAIL` y `ADMIN_PASSWORD` en `.env` (mínimo 14 caracteres) y ejecutá `npm run admin:create`. El acceso está en `/admin`. No hay credenciales de demostración en el repositorio.
 
-## Publicar en Vercel
+## Comandos
 
-Importá el proyecto en Vercel con el preset **Vite**, el comando de compilación `npm run build` y el directorio de salida `dist`. No se necesita una función API ni un archivo `vercel.json`: en producción se usa directamente el catálogo incluido desde `db.json`, sin solicitar el endpoint local `/api`. Los cambios a productos, precios o configuración requieren una nueva compilación y publicación. El carrito prepara el pedido para WhatsApp y no procesa pagos.
+| Comando | Uso |
+| --- | --- |
+| `npm run dev` | Frontend y API en modo desarrollo |
+| `npm run dev:frontend` / `npm run dev:backend` | Iniciar un workspace |
+| `npm test` | Pruebas frontend y backend |
+| `npm run build` | Compilar frontend |
+| `npm run db:migrate` | Aplicar esquema e importar catálogo inicial a MySQL |
+| `npm run admin:create` | Crear un administrador desde variables de entorno |
+| `npm run optimize:images` | Ejecutar la optimización de recursos compatible con el proyecto |
 
-## Editar el catálogo
+El catálogo JSON en `data/seed/db.json` sirve como semilla y fallback local. Pedidos, usuarios administrativos, inventario, CRM y documentos RAG requieren MySQL. La confirmación de un pedido no procesa pagos; disponibilidad y entrega se coordinan aparte.
 
-`db.json` concentra precios en colones, productos, orden, descripciones, características, WhatsApp, Instagram, ubicación y enlaces de navegación. Cambiá `priceCRC` como número entero, sin símbolo de moneda. `displayOrder` define el orden. `referenceFeatures` contiene las características del modelo publicadas por Apple y `specSourceUrl` enlaza la ficha oficial. Estas características son una referencia, no una verificación del artículo disponible en la tienda. Confirmá físicamente la versión y sus funciones antes de anunciar especificaciones como propias del inventario.
+GitHub Actions ejecuta instalación reproducible, pruebas, build y auditoría de dependencias en cada push y pull request.
 
-Las imágenes están en `public/images/products/` y `public/images/hero/`. Sustituí los archivos WebP por fotos autorizadas del artículo real manteniendo el nombre, o actualizá las rutas de cada producto en `db.json`. Para optimizar imágenes PNG nuevas, guardalas en esas carpetas y ejecutá `npm run optimize:images`.
+## Despliegue
 
-Los datos de WhatsApp e Instagram están en `settings` de `db.json`. Si cambian los datos de la empresa, actualizá también el JSON-LD de `index.html`.
+Vercel compila `frontend/` y enruta `/api/*` a la función catch-all de `api/`. Configurá en Vercel las variables de base de datos y `APP_ORIGIN` con el dominio HTTPS real. Las integraciones Gemini y Google Drive son opcionales; consultá [docs/DESPLIEGUE_VERCEL.md](./docs/DESPLIEGUE_VERCEL.md).
 
-## Verificar
+## Estructura
 
-```bash
-npm run test
-npm run build
-```
+- `frontend/`: React, rutas, catálogo, carrito, comparador, promociones y panel de administración.
+- `backend/`: API Express, MySQL, CRM, inventario, autenticación administrativa y RAG.
+- `api/`: adaptador serverless de Vercel.
+- `data/seed/`: catálogo inicial.
+- `scripts/`: desarrollo y tareas de recursos.
+- `docs/`: auditoría, arquitectura, migración, despliegue y validación.
 
-La API responde en `http://127.0.0.1:3001/products` y `http://127.0.0.1:3001/settings`. Las pruebas cubren validación de productos, orden, precio CRC, enlace WhatsApp, selección, pestañas y estado de respaldo. El diseño fue inspeccionado en navegador a 1440, 390 y 320 px.
-
-## Datos comerciales pendientes
-
-Las imágenes actuales son **ilustraciones originales generadas para esta demo**, no fotos del inventario real. Faltan por confirmar generación exacta del Apple Pencil, versión y color de AirPods Max, funciones técnicas del artículo ofrecido, compatibilidad, contenido de cada caja, disponibilidad, estado y cualquier garantía. La web no afirma autorización comercial de Apple.
+Las fuentes originales fuera de este repositorio no se borraron. Los límites de alcance y el resultado de la consolidación están en [docs/AUDITORIA_FUENTES.md](./docs/AUDITORIA_FUENTES.md) y [docs/MAPA_MIGRACION.md](./docs/MAPA_MIGRACION.md).
