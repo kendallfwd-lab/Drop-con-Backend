@@ -29,6 +29,6 @@ npm run db:migrate
 - Sintaxis/configuración: los archivos backend/API pasaron `node --check` y los JSON de configuración se parsearon correctamente.
 - El adaptador de Vercel pudo cargar la aplicación Express con variables de base de datos ficticias; no se conectó a MySQL.
 - La migración MySQL, la respuesta real de `/api/health` y el despliegue Vercel quedan pendientes de credenciales/servicios externos.
-- El workflow de GitHub Actions está configurado; su ejecución remota comenzará al subir la rama al repositorio.
+- El workflow de GitHub Actions comprueba instalación, pruebas, compilación y auditoría en cada push y pull request.
 
 No se declaran verificados servicios externos ni despliegue productivo.
