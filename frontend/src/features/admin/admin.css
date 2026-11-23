@@ -33,6 +33,36 @@
   color: var(--admin-text);
   background: var(--admin-bg);
   font-family: Inter, system-ui, sans-serif;
+  position: relative;
+  isolation: isolate;
+}
+
+.dz-admin:not(:has(.dz-admin__top)) {
+  background: radial-gradient(circle at 50% 20%, rgba(255,255,255,.98), transparent 58%), var(--admin-bg);
+}
+
+.dz-admin:not(:has(.dz-admin__top))::before,
+.dz-admin:not(:has(.dz-admin__top))::after {
+  position: fixed;
+  z-index: -1;
+  content: '';
+  width: 48vw;
+  height: 48vw;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(2px);
+}
+
+.dz-admin:not(:has(.dz-admin__top))::before {
+  top: -20vw;
+  left: -12vw;
+  background: radial-gradient(circle, rgba(37,99,235,.22), rgba(37,99,235,0) 68%);
+}
+
+.dz-admin:not(:has(.dz-admin__top))::after {
+  right: -14vw;
+  bottom: -24vw;
+  background: radial-gradient(circle, rgba(6,182,212,.18), rgba(6,182,212,0) 68%);
 }
 
 .dz-admin__top {
@@ -60,19 +90,37 @@
   position: fixed;
   left: 50%;
   top: 50%;
-  width: min(430px, calc(100% - 32px));
+  width: min(460px, calc(100% - 32px));
   transform: translate(-50%, -50%);
   display: grid;
-  gap: 16px;
+  gap: 24px;
   box-sizing: border-box;
-  padding: 34px;
-  border: 1px solid var(--admin-border);
-  border-radius: 18px;
-  background: var(--admin-surface);
-  box-shadow: 0 24px 70px rgba(15,23,42,.12);
+  padding: 38px;
+  border: 1px solid color-mix(in srgb, var(--admin-primary) 12%, var(--admin-border));
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--admin-surface) 94%, transparent);
+  box-shadow: 0 30px 90px rgba(15,23,42,.16), 0 0 0 8px rgba(255,255,255,.24);
+  backdrop-filter: blur(18px);
 }
-.dz-admin__login h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -.04em; }
+.dz-admin__login-brand { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.dz-admin__login-brand .brand__logo { width: 168px; height: auto; }
+.dz-admin__login-badge { padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--admin-primary) 18%, var(--admin-border)); border-radius: 999px; color: var(--admin-primary); background: color-mix(in srgb, var(--admin-primary) 7%, transparent); font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+.dz-admin__login h1 { margin: 0; font-size: clamp(28px, 5vw, 34px); line-height: 1.04; letter-spacing: -.055em; }
+.dz-admin__login-help { max-width: 36ch; margin: -12px 0 0; color: var(--admin-text-muted); font-size: 14px; line-height: 1.55; }
 .dz-admin__login label { display: grid; gap: 7px; color: var(--admin-text-muted); font-size: 13px; font-weight: 700; }
+.dz-admin__login input { min-height: 48px; border-radius: 12px; padding-inline: 14px; }
+.dz-admin__demo-login { display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; padding: 13px; border: 1px dashed color-mix(in srgb, var(--admin-primary) 28%, var(--admin-border)); border-radius: 14px; background: color-mix(in srgb, var(--admin-primary) 5%, var(--admin-surface)); }
+.dz-admin__demo-login div { display: grid; gap: 2px; }
+.dz-admin__demo-login strong { color: var(--admin-text); font-size: 12px; }
+.dz-admin__demo-login span { color: var(--admin-text-muted); font-size: 10px; }
+.dz-admin__demo-login code { align-self: center; color: var(--admin-text-muted); font: 600 11px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+.dz-admin__demo-login button { grid-column: 1 / -1; min-height: 34px; border-color: color-mix(in srgb, var(--admin-primary) 30%, var(--admin-border)); color: var(--admin-primary); font-size: 12px; }
+.dz-admin__login-submit { width: 100%; min-height: 48px; border-radius: 12px !important; font-size: 14px !important; box-shadow: 0 10px 20px color-mix(in srgb, var(--admin-primary) 22%, transparent); }
+.dz-admin__login-submit:hover:not(:disabled) { background: var(--admin-primary-hover) !important; transform: translateY(-1px); box-shadow: 0 13px 24px color-mix(in srgb, var(--admin-primary) 28%, transparent); }
+.dz-admin__login-footnote { display: flex; align-items: center; justify-content: center; gap: 7px; margin: -4px 0 0; color: var(--admin-text-muted); font-size: 11px; }
+.dz-admin__login-footnote span { color: var(--admin-success); font-size: 9px; }
+.dz-admin__back-link { justify-self: center; color: var(--admin-primary); font-size: 13px; font-weight: 800; text-decoration: none; }
+.dz-admin__back-link:hover { color: var(--admin-primary-hover); text-decoration: underline; text-underline-offset: 3px; }
 .dz-admin input, .dz-admin textarea, .dz-admin select {
   width: 100%;
   box-sizing: border-box;

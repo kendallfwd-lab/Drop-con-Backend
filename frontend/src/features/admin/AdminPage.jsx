@@ -11,6 +11,11 @@ const blank = {
   availability: 'Consultar', featured: false, active: false, displayOrder: 0,
 };
 
+const DEMO_ACCOUNT = {
+  email: 'demo.admin@dropzone.local',
+  password: 'DropZoneDemo2026!',
+};
+
 async function api(path, method = 'GET', body) {
   const response = await fetch(`/api/admin${path}`, {
     method,
@@ -53,6 +58,13 @@ export default function AdminPage() {
     finally { setBusy(false); }
   }
 
+  function fillDemoAccount(event) {
+    const form = event.currentTarget.form;
+    form.elements.email.value = DEMO_ACCOUNT.email;
+    form.elements.password.value = DEMO_ACCOUNT.password;
+    form.elements.email.focus();
+  }
+
   async function signOut() {
     setBusy(true);
     setError('');
@@ -79,11 +91,21 @@ export default function AdminPage() {
     </header>}
     {error && <p className="dz-admin__error" role="alert">{error}</p>}
     {session === undefined && <p role="status">Verificando sesión…</p>}
-    {session === null && <form className="dz-admin__login dz-admin__card" onSubmit={authenticate}>
+    {session === null && <form className="dz-admin__login" onSubmit={authenticate} aria-describedby="admin-login-help">
+      <div className="dz-admin__login-brand"><Brand /><span className="dz-admin__login-badge">ADMIN</span></div>
       <h1>Acceso del equipo de {settings.brand}</h1>
+      <p id="admin-login-help" className="dz-admin__login-help">Ingresa para administrar productos, pedidos e inventario de {settings.brand}.</p>
       <label>Correo electrónico<input autoComplete="username" name="email" type="email" maxLength={254} required /></label>
       <label>Contraseña<input autoComplete="current-password" name="password" type="password" maxLength={128} required /></label>
-      <button className="dz-admin__primary" disabled={busy}>{busy ? 'Ingresando…' : 'Iniciar sesión'}</button>
+      <div className="dz-admin__demo-login">
+        <div><strong>Usuario demo</strong><span>Solo para desarrollo local</span></div>
+        <code>{DEMO_ACCOUNT.email}</code>
+        <code>{DEMO_ACCOUNT.password}</code>
+        <button type="button" onClick={fillDemoAccount}>Usar usuario demo</button>
+      </div>
+      <button className="dz-admin__primary dz-admin__login-submit" disabled={busy}>{busy ? 'Ingresando…' : 'Iniciar sesión'}</button>
+      <p className="dz-admin__login-footnote"><span aria-hidden="true">●</span> Acceso protegido para el equipo autorizado</p>
+      <Link className="dz-admin__back-link" to="/">← Volver a la tienda</Link>
     </form>}
     {session && <StaffDesk session={session} api={api} reportError={handleError} clearError={() => setError('')}>
       <Dashboard brand={settings.brand} email={session.email} reportError={handleError} clearError={() => setError('')} />

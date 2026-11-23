@@ -34,7 +34,7 @@ export default function Header({ settings, sections, cartCount, onOpenCart, cart
     onFocusCapture={show}
   >
     <div className="container site-header__inner">
-      <Link to={ROUTES.HOME} className="brand-link" onClick={() => setOpen(false)}><Brand /></Link>
+      <Link to={ROUTES.ADMIN} className="brand-link" aria-label="Ir al inicio de sesión del administrador" onClick={() => setOpen(false)}><Brand /></Link>
       <nav className={`primary-nav ${open ? 'primary-nav--open' : ''}`} id="main-navigation" aria-label="Navegación principal">
         {sections.filter((item) => item.enabled).map((item) => <Link key={item.id} to={sectionRoutes[item.id] || ROUTES.HOME} onClick={() => setOpen(false)}>{item.label}</Link>)}
       </nav>
