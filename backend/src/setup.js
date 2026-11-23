@@ -17,6 +17,21 @@ async function migrate() {
     if (accessMigration.affectedRows) {
       await connection.execute("INSERT INTO staff_access (account_id, role) SELECT id, 'admin' FROM admins");
     }
+    const [costMigration] = await connection.execute(
+      "INSERT IGNORE INTO schema_migrations (version) VALUES ('002-product-cost')",
+    );
+    if (costMigration.affectedRows) {
+      await connection.execute('ALTER TABLE products ADD COLUMN cost_crc INT UNSIGNED NOT NULL DEFAULT 0 AFTER price_crc');
+    }
+    const billingSchema = await readFile(new URL('../database/migrations/002_billing.sql', import.meta.url), 'utf8');
+    const [billingMigration] = await connection.execute(
+      "INSERT IGNORE INTO schema_migrations (version) VALUES ('003-billing-documents')",
+    );
+    if (billingMigration.affectedRows) {
+      for (const statement of billingSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) {
+        await connection.query(statement);
+      }
+    }
     const [migration] = await connection.execute(
       "INSERT IGNORE INTO schema_migrations (version) VALUES ('001-catalogo-inicial')",
     );

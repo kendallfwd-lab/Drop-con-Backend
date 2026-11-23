@@ -26,6 +26,7 @@
   --admin-border: #243750;
   --admin-primary: #60a5fa;
   --admin-primary-hover: #93c5fd;
+  --admin-shadow: 0 18px 45px rgba(0,0,0,.24);
 }
 
 .dz-admin {
@@ -169,6 +170,7 @@
   transition: width .22s ease, transform .22s ease;
 }
 .dz-admin__sidebar-brand { display: none; }
+.dz-admin__sidebar-brand .footer-wordmark { color: var(--admin-text); font-size: 11px; }
 .dz-admin__nav-group { display: grid; gap: 3px; margin-bottom: 18px; }
 .dz-admin__nav-group > span { padding: 8px 12px 5px; color: var(--admin-text-muted); font-size: 10px; font-weight: 800; letter-spacing: .13em; }
 .dz-admin__nav-group button, .dz-admin__collapse {
@@ -208,11 +210,15 @@
 .dz-admin__breadcrumb span::after { content: '/'; margin-left: 9px; color: var(--admin-border); }
 .dz-admin__breadcrumb b { color: var(--admin-text); }
 .dz-admin__header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.dz-admin__global-search { width: min(330px, 35vw); min-height: 38px; display: flex; align-items: center; gap: 8px; margin-left: 18px; padding: 0 11px; border: 1px solid var(--admin-border); border-radius: 10px; background: var(--admin-surface-soft); color: var(--admin-text-muted); }
+.dz-admin__global-search input { min-height: 30px; padding: 4px 0; border: 0; background: transparent; box-shadow: none !important; }
 .dz-admin__header-actions button { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--admin-border); border-radius: 10px; background: var(--admin-surface); color: var(--admin-text-muted); }
 .dz-admin__avatar { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--admin-primary); color: #fff; font-size: 13px; font-weight: 800; }
 .dz-admin__menu, .dz-admin__sidebar-close { display: none !important; }
 
 .dz-admin__workspace { max-width: 1500px; margin: 0 auto; padding: 28px; }
+.dz-admin__demo-banner { display: flex; align-items: center; gap: 8px; margin: -8px 0 18px; color: var(--admin-text-muted); font-size: 12px; }
+.dz-admin__demo-banner span { padding: 4px 7px; border-radius: 5px; color: #fff; background: var(--admin-primary); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
 .dz-admin__page-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .dz-admin__page-heading span { color: var(--admin-text-muted); font-size: 12px; font-weight: 700; }
 .dz-admin__page-heading h1 { margin: 4px 0 0; font-size: 28px; line-height: 1.1; letter-spacing: -.035em; }
@@ -225,6 +231,19 @@
 .dz-admin__overview .dz-admin__card { min-height: 112px; display: flex; flex-direction: column; justify-content: space-between; }
 .dz-admin__overview span { color: var(--admin-text-muted); font-size: 12px; font-weight: 700; }
 .dz-admin__overview strong { color: var(--admin-text); font-size: 30px; letter-spacing: -.04em; }
+.dz-admin__kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.dz-admin__kpi { position: relative; min-height: 112px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; padding: 16px; border: 1px solid var(--admin-border); border-radius: 14px; background: linear-gradient(145deg, var(--admin-surface-soft), var(--admin-surface)); }
+.dz-admin__kpi::after { position: absolute; right: -20px; bottom: -28px; width: 90px; height: 90px; border-radius: 50%; content: ''; background: color-mix(in srgb, var(--admin-primary) 15%, transparent); }
+.dz-admin__kpi span { color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }
+.dz-admin__kpi strong { font-size: 25px; letter-spacing: -.04em; }
+.dz-admin__kpi small { color: var(--admin-success); font-size: 10px; font-weight: 800; }
+.dz-admin__kpi--purple strong { color: #a78bfa; }.dz-admin__kpi--cyan strong { color: #22d3ee; }.dz-admin__kpi--red strong { color: #fb7185; }
+.dz-admin__dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .8fr); gap: 14px; margin-bottom: 22px; }
+.dz-admin__inner-card { min-width: 0; padding: 18px; border: 1px solid var(--admin-border); border-radius: 14px; background: var(--admin-surface-soft); }
+.dz-admin__inner-card h2 { margin-bottom: 3px; }.dz-admin__inner-card p { margin: 0; }
+.dz-admin__badge { align-self: flex-start; padding: 6px 8px; border: 1px solid var(--admin-border); border-radius: 7px; color: var(--admin-text-muted); font-size: 10px; font-weight: 800; }
+.dz-admin__bars { display: grid; gap: 14px; margin-top: 24px; }.dz-admin__bar-row { display: grid; grid-template-columns: 78px 1fr 28px; align-items: center; gap: 10px; color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }.dz-admin__bar-row div { height: 9px; overflow: hidden; border-radius: 99px; background: var(--admin-border); }.dz-admin__bar-row i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--admin-primary), var(--admin-cyan)); }.dz-admin__bar-row strong { color: var(--admin-text); text-align: right; }
+.dz-admin__activity { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--admin-border); }.dz-admin__activity:first-of-type { margin-top: 14px; }.dz-admin__activity-avatar { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: linear-gradient(135deg, var(--admin-primary), var(--admin-cyan)); font-size: 12px; font-weight: 900; }.dz-admin__activity div { display: grid; gap: 3px; min-width: 0; }.dz-admin__activity strong { color: var(--admin-text); font-size: 12px; }.dz-admin__activity small { color: var(--admin-text-muted); font-size: 10px; }.dz-admin__activity b { margin-left: auto; color: var(--admin-text-muted); font-size: 10px; }
 
 .dz-admin__toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 9px; margin: 16px 0; padding: 10px; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface); }
 .dz-admin__toolbar label { margin-left: auto; min-width: 220px; }
@@ -248,6 +267,16 @@
 .dz-admin__lead button { margin: 6px 8px 0 0; border: 1px solid var(--admin-border); border-radius: 8px; padding: 8px 10px; background: var(--admin-surface); color: var(--admin-primary); }
 .dz-admin__lead strong { color: var(--admin-text); }
 .dz-admin__lead p { margin: 5px 0; }
+.dz-admin__section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.dz-admin__section-heading p { margin-top: 0; }
+.dz-admin__count { flex: 0 0 auto; padding: 6px 9px; border: 1px solid var(--admin-border); border-radius: 999px; color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }
+.dz-admin__trash-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--admin-border); }
+.dz-admin__trash-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--admin-danger); background: color-mix(in srgb, var(--admin-danger) 10%, transparent); }
+.dz-admin__trash-item strong { color: var(--admin-text); font-size: 13px; }
+.dz-admin__trash-item p { margin: 4px 0 0; }
+.dz-admin__danger-button { color: var(--admin-danger) !important; }
+.dz-admin__billing-create { align-items: end; margin-top: 20px; padding: 14px; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface-soft); }
+.dz-admin__billing-actions { white-space: nowrap; }.dz-admin__billing-actions button { margin-right: 5px; }.dz-admin__status-pill { display: inline-flex; padding: 4px 7px; border-radius: 999px; color: var(--admin-success); background: color-mix(in srgb, var(--admin-success) 12%, transparent); font-size: 10px; font-weight: 800; }.dz-admin__billing-note { padding: 12px 14px; border-left: 3px solid var(--admin-warning); border-radius: 4px; background: color-mix(in srgb, var(--admin-warning) 8%, transparent); }.dz-admin__empty-state { padding: 22px; border: 1px dashed var(--admin-border); border-radius: 12px; text-align: center; }
 
 .dz-admin__shell.is-collapsed { --admin-sidebar-width: 72px; }
 .dz-admin__shell.is-collapsed .dz-admin__nav-group > span,
@@ -259,6 +288,7 @@
 
 @media (max-width: 1100px) {
   .dz-admin__overview { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .dz-admin__kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .dz-admin__shell { --admin-sidebar-width: 72px; }
   .dz-admin__main { margin-left: 72px; }
   .dz-admin__nav-group > span, .dz-admin__nav-group button span, .dz-admin__collapse span { display: none; }
@@ -284,10 +314,12 @@
   .dz-admin__nav-group button, .dz-admin__collapse { justify-content: flex-start; padding-inline: 12px; }
   .dz-admin__main { margin-left: 0; }
   .dz-admin__header { top: 58px; height: 58px; padding: 0 12px; }
+  .dz-admin__global-search { display: none; }
   .dz-admin__menu { display: grid !important; width: 38px; height: 38px; place-items: center; border: 1px solid var(--admin-border); border-radius: 9px; background: var(--admin-surface); color: var(--admin-text); }
   .dz-admin__workspace { padding: 18px 12px 40px; }
   .dz-admin__page-heading h1 { font-size: 24px; }
   .dz-admin__overview { grid-template-columns: 1fr; }
+  .dz-admin__kpi-grid, .dz-admin__dashboard-grid { grid-template-columns: 1fr; }
   .dz-admin__header-actions button:first-child { display: none; }
   .dz-admin__breadcrumb span { display: none; }
   .dz-admin__breadcrumb span::after { display: none; }

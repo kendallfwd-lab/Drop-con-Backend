@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { catalog } from './catalog.js';
 import { transaction } from './db.js';
 import { hashPassword, verifyPassword } from './password.js';
+import { billingRoutes } from './billing.js';
 
 const sessionAge = 8 * 60 * 60 * 1000;
 const cookieName = 'dz_admin';
@@ -15,6 +16,7 @@ const productSchema = z.object({
   name: z.string().trim().min(1).max(180),
   category: z.string().trim().min(1).max(80),
   priceCRC: amount,
+  costCRC: amount,
   image: z.string().trim().max(500).regex(/^\/images\/[a-z0-9/_-]+\.(?:png|jpe?g|webp|avif)$/i),
   shortDescription: z.string().trim().max(2000),
   availability: z.string().trim().min(1).max(100),
@@ -27,6 +29,14 @@ const stockSchema = z.object({
   quantity: amount,
   reason: z.string().trim().min(1).max(250),
 });
+const orderTransitions = {
+  Pendiente: new Set(['Cancelado']),
+  Pagado: new Set(['Preparacion', 'Cancelado']),
+  Preparacion: new Set(['Despachado', 'Cancelado']),
+  Despachado: new Set(['Entregado']),
+  Entregado: new Set(),
+  Cancelado: new Set(),
+};
 
 function tokenHash(token) {
   return createHash('sha256').update(token).digest();
@@ -102,6 +112,7 @@ export function adminRoutes(pool, { production, origin }) {
 
   router.use('/staff', staffRoutes(pool));
   router.use(requireAdmin);
+  router.use('/billing', billingRoutes(pool));
 
   router.get('/products', async (req, res) => res.json(await catalog(pool, true)));
 
@@ -109,8 +120,8 @@ export function adminRoutes(pool, { production, origin }) {
     const { id, ...product } = productSchema.extend({ id: slug }).parse(req.body);
     await transaction(pool, async (connection) => {
       await connection.execute(
-        `INSERT INTO products (id, name, category, price_crc, image, description, availability, featured, active, display_order, presentation)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, JSON_OBJECT())`,
+        `INSERT INTO products (id, name, category, price_crc, cost_crc, image, description, availability, featured, active, display_order, presentation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, JSON_OBJECT())`,
         [id, ...productValues(product)],
       );
       await connection.execute(
@@ -124,7 +135,7 @@ export function adminRoutes(pool, { production, origin }) {
     const id = slug.parse(req.params.id);
     const product = productSchema.parse(req.body);
     const [result] = await pool.execute(
-      `UPDATE products SET name = ?, category = ?, price_crc = ?, image = ?, description = ?,
+      `UPDATE products SET name = ?, category = ?, price_crc = ?, cost_crc = ?, image = ?, description = ?,
        availability = ?, featured = ?, active = ?, display_order = ? WHERE id = ?`,
       [...productValues(product), id],
     );
@@ -214,6 +225,25 @@ export function adminRoutes(pool, { production, origin }) {
     const changed = await transaction(pool, async (connection) => {
       const [[order]] = await connection.execute('SELECT status FROM orders WHERE id=? FOR UPDATE', [id]);
       if (!order) return false;
+      if (order.status === status) return 'unchanged';
+      if (status === 'Pagado') return 'payment_required';
+      if (!orderTransitions[order.status]?.has(status)) return 'invalid_transition';
+      if (status === 'Cancelado') {
+        const [items] = await connection.execute(
+          'SELECT inventory_item_id, quantity FROM order_items WHERE order_id=? AND inventory_item_id IS NOT NULL', [id],
+        );
+        for (const item of items) {
+          const [[inventory]] = await connection.execute('SELECT quantity FROM inventory_items WHERE id=? FOR UPDATE', [item.inventory_item_id]);
+          if (inventory && inventory.quantity !== null) {
+            await connection.execute('UPDATE inventory_items SET quantity=quantity+? WHERE id=?', [item.quantity, item.inventory_item_id]);
+            await connection.execute(
+              `INSERT INTO inventory_movements (item_id, admin_id, previous_quantity, new_quantity, reason, created_at)
+               VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(3))`,
+              [item.inventory_item_id, req.admin.id, inventory.quantity, inventory.quantity + item.quantity, `Liberación por cancelación del pedido ${id}`],
+            );
+          }
+        }
+      }
       await connection.execute('UPDATE orders SET status=?, updated_at=UTC_TIMESTAMP(3) WHERE id=?', [status, id]);
       await connection.execute(
         'INSERT INTO audit_logs(admin_id,action,entity_type,entity_id,details) VALUES (?, ?, ?, ?, ?)',
@@ -222,6 +252,9 @@ export function adminRoutes(pool, { production, origin }) {
       return true;
     });
     if (!changed) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    if (changed === 'unchanged') return res.status(204).end();
+    if (changed === 'payment_required') return res.status(409).json({ error: 'El pago debe confirmarse desde el flujo de pagos; no se puede marcar manualmente como Pagado.' });
+    if (changed === 'invalid_transition') return res.status(409).json({ error: 'Transición de pedido no permitida para el estado actual.' });
     res.status(204).end();
   });
 
@@ -318,16 +351,19 @@ export function adminRoutes(pool, { production, origin }) {
   });
 
   router.get('/reports/profit', async (req, res) => {
-    const [sales] = await pool.execute(
+    const [[sales]] = await pool.execute(
       `SELECT COALESCE(SUM(o.total_crc),0) AS revenue,
-       COALESCE(SUM(o.total_crc - o.discount_crc),0) AS netSales,
-       COALESCE(SUM(i.quantity*i.cost_crc),0) AS productCost
-       FROM orders o LEFT JOIN order_items i ON i.order_id=o.id
+       COALESCE(SUM(o.total_crc - o.discount_crc),0) AS netSales
+       FROM orders o WHERE o.status IN ('Pagado','Preparacion','Despachado','Entregado')`,
+    );
+    const [[costs]] = await pool.execute(
+      `SELECT COALESCE(SUM(i.quantity*i.cost_crc),0) AS productCost
+       FROM order_items i JOIN orders o ON o.id=i.order_id
        WHERE o.status IN ('Pagado','Preparacion','Despachado','Entregado')`,
     );
     const [[expenses]] = await pool.execute('SELECT COALESCE(SUM(amount_crc),0) AS expenses FROM expenses');
-    const revenue = Number(sales[0].revenue);
-    const productCost = Number(sales[0].productCost);
+    const revenue = Number(sales.revenue);
+    const productCost = Number(costs.productCost);
     const operatingExpenses = Number(expenses.expenses);
     res.json({
       revenue,
@@ -349,6 +385,6 @@ export function adminRoutes(pool, { production, origin }) {
 }
 
 function productValues(product) {
-  return [product.name, product.category, product.priceCRC, product.image, product.shortDescription,
+  return [product.name, product.category, product.priceCRC, product.costCRC, product.image, product.shortDescription,
     product.availability, product.featured, product.active, product.displayOrder];
 }

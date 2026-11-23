@@ -18,7 +18,7 @@ export async function catalog(pool, includeInactive = false) {
     availability: row.availability,
     featured: Boolean(row.featured),
     displayOrder: row.display_order,
-    ...(includeInactive ? { active: Boolean(row.active) } : {}),
+    ...(includeInactive ? { active: Boolean(row.active), costCRC: row.cost_crc } : {}),
   }));
 }
 

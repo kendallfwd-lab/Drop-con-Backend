@@ -8,6 +8,7 @@ import { adminRoutes } from './admin.js';
 import { catalog, legacyData } from './catalog.js';
 import { calculateOrderTotals } from './pricing.js';
 import { consumeOAuthState, saveDriveCallback } from './drive.js';
+import { publicDocumentRoutes } from './billing.js';
 
 const production = process.env.NODE_ENV === 'production';
 const origin = new URL(process.env.APP_ORIGIN || 'http://127.0.0.1:5173');
@@ -23,6 +24,7 @@ app.use(helmet({
 }));
 app.use('/api', express.json({ limit: '16kb' }));
 app.use('/api/admin', adminRoutes(pool, { production, origin: origin.origin }));
+app.use('/api/public/documents', publicDocumentRoutes(pool));
 app.get('/api/health', async (req, res) => {
   await pool.query('SELECT 1');
   res.json({ status: 'ok' });
@@ -75,7 +77,7 @@ app.post('/api/orders', async (req, res) => {
     const checkedItems = [];
     for (const item of body.items) {
       const [[product]] = await connection.execute(
-          'SELECT id,name,category,price_crc,presentation FROM products WHERE id=? AND active=TRUE',
+          'SELECT id,name,category,price_crc,cost_crc,presentation FROM products WHERE id=? AND active=TRUE',
         [item.productId],
       );
       if (!product) return { error: `Producto no disponible: ${item.productId}` };
@@ -99,10 +101,15 @@ app.post('/api/orders', async (req, res) => {
         const variant = variants.find((entry) => entry.name === item.variantLabel);
         if (variant?.priceCRC != null) unitPrice = Number(variant.priceCRC);
       }
-      checkedItems.push({ ...item, inventory, name: product.name, category: product.category, unitPrice, cost: 0 });
+      checkedItems.push({ ...item, inventory, name: product.name, category: product.category, unitPrice, cost: Number(product.cost_crc) });
     }
 
-    const totals = calculateOrderTotals(checkedItems);
+    const [promotions] = await connection.execute(
+      `SELECT product_id, discount_crc, minimum_quantity, active FROM promotions
+       WHERE active=TRUE AND (starts_at IS NULL OR starts_at <= UTC_TIMESTAMP())
+       AND (ends_at IS NULL OR ends_at >= UTC_TIMESTAMP())`,
+    );
+    const totals = calculateOrderTotals(checkedItems, promotions);
     await connection.execute(
       `INSERT INTO orders(id,customer_id,customer_name,phone,channel,status,subtotal_crc,discount_crc,total_crc,idempotency_key,notes)
        VALUES (?,?,?,?,?, 'Pendiente',?,?,?, ?,?)`,

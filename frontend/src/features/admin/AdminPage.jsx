@@ -7,14 +7,14 @@ import StaffDesk from './StaffDesk.jsx';
 import './admin.css';
 
 const blank = {
-  id: '', name: '', category: '', priceCRC: 0, image: '', shortDescription: '',
+  id: '', name: '', category: '', priceCRC: 0, costCRC: 0, image: '', shortDescription: '',
   availability: 'Consultar', featured: false, active: false, displayOrder: 0,
 };
 
-const DEMO_ACCOUNT = {
+const DEMO_ACCOUNT = import.meta.env.DEV ? {
   email: 'demo.admin@dropzone.local',
   password: 'DropZoneDemo2026!',
-};
+} : null;
 
 async function api(path, method = 'GET', body) {
   const response = await fetch(`/api/admin${path}`, {
@@ -97,12 +97,12 @@ export default function AdminPage() {
       <p id="admin-login-help" className="dz-admin__login-help">Ingresa para administrar productos, pedidos e inventario de {settings.brand}.</p>
       <label>Correo electrónico<input autoComplete="username" name="email" type="email" maxLength={254} required /></label>
       <label>Contraseña<input autoComplete="current-password" name="password" type="password" maxLength={128} required /></label>
-      <div className="dz-admin__demo-login">
+      {DEMO_ACCOUNT && <div className="dz-admin__demo-login">
         <div><strong>Usuario demo</strong><span>Solo para desarrollo local</span></div>
         <code>{DEMO_ACCOUNT.email}</code>
         <code>{DEMO_ACCOUNT.password}</code>
         <button type="button" onClick={fillDemoAccount}>Usar usuario demo</button>
-      </div>
+      </div>}
       <button className="dz-admin__primary dz-admin__login-submit" disabled={busy}>{busy ? 'Ingresando…' : 'Iniciar sesión'}</button>
       <p className="dz-admin__login-footnote"><span aria-hidden="true">●</span> Acceso protegido para el equipo autorizado</p>
       <Link className="dz-admin__back-link" to="/">← Volver a la tienda</Link>
@@ -222,6 +222,7 @@ function ProductForm({ product, creating, busy, onClose, save, savePrices }) {
     save({
       ...Object.fromEntries(form),
       priceCRC: Number(form.get('priceCRC')),
+      costCRC: Number(form.get('costCRC')),
       displayOrder: Number(form.get('displayOrder')),
       featured: form.has('featured'),
       active: form.has('active'),
@@ -235,6 +236,7 @@ function ProductForm({ product, creating, busy, onClose, save, savePrices }) {
       <label>Nombre<input name="name" defaultValue={product.name} maxLength={180} required /></label>
       <label>Categoría<input name="category" defaultValue={product.category} maxLength={80} required /></label>
       <label>Precio base en colones<input type="number" name="priceCRC" min="0" max="1000000000" defaultValue={product.priceCRC} required /></label>
+      <label>Costo de adquisición<input type="number" name="costCRC" min="0" max="1000000000" defaultValue={product.costCRC ?? 0} required /></label>
       <label>Imagen del sitio<input name="image" defaultValue={product.image} placeholder="/images/products/ejemplo.webp" maxLength={500} required /></label>
       <label>Estado visible de disponibilidad<input name="availability" defaultValue={product.availability} maxLength={100} required /></label>
       <label>Orden<input type="number" name="displayOrder" min="0" max="1000000000" defaultValue={product.displayOrder} required /></label>
