@@ -68,6 +68,7 @@ export default function StaffDesk({
   const [tab, setTab] = useState(admin && location.pathname.endsWith('/facturacion') ? 'billing' : (admin ? 'summary' : 'crm'));
   const [data, setData] = useState(null);
   const [dashboard, setDashboard] = useState(null);
+  const [dashboardFilters, setDashboardFilters] = useState({ period: '30d', channel: 'all' });
   const [users, setUsers] = useState([]);
   const [articles, setArticles] = useState([]);
   const [events, setEvents] = useState([]);
@@ -114,7 +115,7 @@ export default function StaffDesk({
       setDrive(await api('/staff/drive/status'));
       setOperations(await api('/operations/overview'));
       const [nextDashboard, nextOrders, nextCustomers, nextPromotions, nextSuppliers, nextWarranties, nextExpenses, nextProfit] = await Promise.all([
-        api('/staff/dashboard'),
+        api(`/staff/dashboard?period=${dashboardFilters.period}&channel=${dashboardFilters.channel}`),
         api('/orders'), api('/customers'), api('/promotions'), api('/suppliers'),
         api('/warranties'), api('/expenses'), api('/reports/profit'),
       ]);
@@ -153,6 +154,13 @@ export default function StaffDesk({
   useEffect(() => {
     load().catch(reportError);
   }, []);
+  useEffect(() => {
+    if (!admin || !data) return undefined;
+    api(`/staff/dashboard?period=${dashboardFilters.period}&channel=${dashboardFilters.channel}`)
+      .then(setDashboard)
+      .catch(reportError);
+    return undefined;
+  }, [dashboardFilters.period, dashboardFilters.channel]);
   useEffect(() => {
     document.documentElement.setAttribute('data-admin-theme', theme);
     window.localStorage.setItem('dz-admin-theme-v2', theme);
@@ -244,6 +252,16 @@ export default function StaffDesk({
       {tab === 'inventory' && admin && children}
       {tab === 'summary' && data && (
         <section className="dz-admin__card">
+          <div className="dz-admin__dashboard-controls">
+            <div><span>Vista ejecutiva</span><strong>Rendimiento del negocio</strong></div>
+            <label>Periodo<select value={dashboardFilters.period} onChange={(event) => setDashboardFilters((current) => ({ ...current, period: event.target.value }))}>
+              <option value="today">Hoy</option><option value="yesterday">Ayer</option><option value="7d">Últimos 7 días</option><option value="30d">Últimos 30 días</option><option value="month">Este mes</option><option value="year">Este año</option>
+            </select></label>
+            <label>Canal<select value={dashboardFilters.channel} onChange={(event) => setDashboardFilters((current) => ({ ...current, channel: event.target.value }))}>
+              <option value="all">Todos los canales</option><option value="Tienda">Tienda</option><option value="WhatsApp">WhatsApp</option><option value="Telefono">Teléfono</option><option value="Otro">Otro</option>
+            </select></label>
+            <button type="button" onClick={() => setTab('operations')}>Ver pedidos</button>
+          </div>
           <div className="dz-admin__kpi-grid">
             <div className="dz-admin__kpi dz-admin__kpi--blue"><span>Ventas cobradas</span><strong>₡{Number(dashboard?.collected || 0).toLocaleString('es-CR')}</strong><small>{dashboard?.period || 'Datos reales'}</small></div>
             <div className="dz-admin__kpi dz-admin__kpi--purple"><span>Pedidos creados</span><strong>{dashboard?.createdOrders ?? 0}</strong><small>{dashboard?.paidOrders ?? 0} con pago confirmado</small></div>

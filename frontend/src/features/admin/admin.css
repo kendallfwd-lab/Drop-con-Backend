@@ -239,6 +239,11 @@
 .dz-admin__overview span { color: var(--admin-text-muted); font-size: 12px; font-weight: 700; }
 .dz-admin__overview strong { color: var(--admin-text); font-size: 30px; letter-spacing: -.04em; }
 .dz-admin__kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.dz-admin__dashboard-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--admin-border); }
+.dz-admin__dashboard-controls > div { display: grid; gap: 3px; margin-right: auto; }
+.dz-admin__dashboard-controls > div span { color: var(--admin-text-muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.dz-admin__dashboard-controls > div strong { font-size: 18px; letter-spacing: -.02em; }
+.dz-admin__dashboard-controls label { min-width: 150px; }
 .dz-admin__kpi { position: relative; min-height: 112px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; padding: 16px; border: 1px solid var(--admin-border); border-radius: 14px; background: linear-gradient(145deg, var(--admin-surface-soft), var(--admin-surface)); }
 .dz-admin__kpi::after { position: absolute; right: -20px; bottom: -28px; width: 90px; height: 90px; border-radius: 50%; content: ''; background: color-mix(in srgb, var(--admin-primary) 15%, transparent); }
 .dz-admin__kpi span { color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }
@@ -351,6 +356,9 @@
   .dz-admin__toolbar { align-items: stretch; padding: 8px; }
   .dz-admin__toolbar button { flex: 1 1 auto; }
   .dz-admin__toolbar label { order: 3; }
+  .dz-admin__dashboard-controls { align-items: stretch; }
+  .dz-admin__dashboard-controls > div { width: 100%; margin-right: 0; }
+  .dz-admin__dashboard-controls label, .dz-admin__dashboard-controls button { flex: 1 1 145px; min-width: 0; }
   .dz-admin__card { padding: 15px; border-radius: 12px; }
   .dz-admin__dashboard-grid { gap: 12px; }
   .dz-admin__inner-card { padding: 14px; }

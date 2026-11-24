@@ -105,23 +105,30 @@ export function staffRoutes(pool) {
   );
   r.use(requireAdmin);
   r.get('/dashboard', async (req, res) => {
+    const period = ['today', 'yesterday', '7d', '30d', 'month', 'year'].includes(req.query.period) ? req.query.period : '30d';
+    const channel = ['all', 'Tienda', 'WhatsApp', 'Telefono', 'Otro'].includes(req.query.channel) ? req.query.channel : 'all';
+    const periodStart = { today: 'UTC_DATE()', yesterday: 'DATE_SUB(UTC_DATE(), INTERVAL 1 DAY)', '7d': 'DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)', '30d': 'DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)', month: "DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-01')", year: "DATE_FORMAT(UTC_TIMESTAMP(), '%Y-01-01')" }[period];
+    const periodEnd = period === 'yesterday' ? 'UTC_DATE()' : null;
+    const dateFilter = (column) => periodEnd ? `${column} >= ${periodStart} AND ${column} < ${periodEnd}` : `${column} >= ${periodStart}`;
+    const channelFilter = (alias = 'o') => channel === 'all' ? { sql: '', params: [] } : { sql: ` AND ${alias}.channel=?`, params: [channel] };
+    const salesChannel = channelFilter();
     const [[sales]] = await pool.execute(`
       SELECT COALESCE(SUM(p.amount_crc), 0) AS collected,
              COUNT(DISTINCT p.order_id) AS paid_orders
-      FROM payments p
+      FROM payments p JOIN orders o ON o.id=p.order_id
       WHERE p.status='Confirmado'
-        AND COALESCE(p.paid_at, p.created_at) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)`);
+        AND ${dateFilter('COALESCE(p.paid_at, p.created_at)')}${salesChannel.sql}`, salesChannel.params);
     const [[orders]] = await pool.execute(`
       SELECT COUNT(*) AS created_orders,
              SUM(status='Pendiente') AS pending_orders,
              SUM(status IN ('Preparacion','Despachado')) AS operational_orders
-      FROM orders WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)`);
+      FROM orders o WHERE ${dateFilter('o.created_at')}${salesChannel.sql}`, salesChannel.params);
     const [[profit]] = await pool.execute(`
       SELECT COALESCE(SUM(i.quantity * i.unit_price_crc),0) AS revenue,
              COALESCE(SUM(i.quantity * i.cost_crc),0) AS product_cost
       FROM order_items i JOIN orders o ON o.id=i.order_id
       WHERE o.status IN ('Pagado','Preparacion','Despachado','Entregado')
-        AND o.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)`);
+        AND ${dateFilter('o.created_at')}${salesChannel.sql}`, salesChannel.params);
     const [[inventory]] = await pool.execute(`
       SELECT COUNT(*) AS low_stock
       FROM inventory_items i
@@ -131,7 +138,7 @@ export function staffRoutes(pool) {
         AND i.quantity <= COALESCE(t.minimum_quantity, 5)`);
     const [[payments]] = await pool.execute(`
       SELECT COUNT(*) AS pending_verification
-      FROM payments WHERE status='Pendiente'`);
+      FROM payments p JOIN orders o ON o.id=p.order_id WHERE p.status='Pendiente'${salesChannel.sql}`, salesChannel.params);
     const [[fiscal]] = await pool.execute(`
       SELECT COUNT(*) AS rejected
       FROM billing_documents WHERE fiscal_status IN ('rejected','rechazado')`);
@@ -141,15 +148,16 @@ export function staffRoutes(pool) {
       FROM customers c`);
     const [dailySales] = await pool.execute(`
       SELECT DATE(COALESCE(p.paid_at,p.created_at)) AS day, SUM(p.amount_crc) AS total
-      FROM payments p WHERE p.status='Confirmado'
-        AND COALESCE(p.paid_at,p.created_at) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)
-      GROUP BY DATE(COALESCE(p.paid_at,p.created_at)) ORDER BY day`);
+      FROM payments p JOIN orders o ON o.id=p.order_id WHERE p.status='Confirmado'
+        AND ${dateFilter('COALESCE(p.paid_at,p.created_at)')}${salesChannel.sql}
+      GROUP BY DATE(COALESCE(p.paid_at,p.created_at)) ORDER BY day`, salesChannel.params);
     const collected = Number(sales.collected);
     const paidOrders = Number(sales.paid_orders);
     const revenue = Number(profit.revenue);
     const productCost = Number(profit.product_cost);
     res.json({
-      period: 'Últimos 30 días',
+      period: { today: 'Hoy', yesterday: 'Ayer', '7d': 'Últimos 7 días', '30d': 'Últimos 30 días', month: 'Este mes', year: 'Este año' }[period],
+      channel,
       collected,
       createdOrders: Number(orders.created_orders || 0),
       paidOrders,
