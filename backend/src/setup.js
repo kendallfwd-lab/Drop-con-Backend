@@ -32,6 +32,24 @@ async function migrate() {
         await connection.query(statement);
       }
     }
+    const operationsSchema = await readFile(new URL('../database/migrations/003_admin_operations.sql', import.meta.url), 'utf8');
+    const [operationsMigration] = await connection.execute(
+      "INSERT IGNORE INTO schema_migrations (version) VALUES ('004-admin-operations')",
+    );
+    if (operationsMigration.affectedRows) {
+      for (const statement of operationsSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) {
+        await connection.query(statement);
+      }
+    }
+    const businessSchema = await readFile(new URL('../database/migrations/004_business_operations.sql', import.meta.url), 'utf8');
+    const [businessMigration] = await connection.execute(
+      "INSERT IGNORE INTO schema_migrations (version) VALUES ('005-business-operations')",
+    );
+    if (businessMigration.affectedRows) {
+      for (const statement of businessSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) {
+        await connection.query(statement);
+      }
+    }
     const [migration] = await connection.execute(
       "INSERT IGNORE INTO schema_migrations (version) VALUES ('001-catalogo-inicial')",
     );

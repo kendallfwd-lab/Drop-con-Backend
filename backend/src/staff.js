@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { hashPassword } from './password.js';
 import { transaction } from './db.js';
 import { policies, retrieve, answer, funnel, geminiStatus } from './knowledge.js';
+import { analyzeDashboardWithGemini } from './gemini.js';
 import { driveStatus, driveAuthorizationUrl, issueOAuthState, syncDriveFolder } from './drive.js';
 
 export function requireAdmin(req, res, next) {
@@ -103,6 +104,80 @@ export function staffRoutes(pool) {
     },
   );
   r.use(requireAdmin);
+  r.get('/dashboard', async (req, res) => {
+    const [[sales]] = await pool.execute(`
+      SELECT COALESCE(SUM(p.amount_crc), 0) AS collected,
+             COUNT(DISTINCT p.order_id) AS paid_orders
+      FROM payments p
+      WHERE p.status='Confirmado'
+        AND COALESCE(p.paid_at, p.created_at) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)`);
+    const [[orders]] = await pool.execute(`
+      SELECT COUNT(*) AS created_orders,
+             SUM(status='Pendiente') AS pending_orders,
+             SUM(status IN ('Preparacion','Despachado')) AS operational_orders
+      FROM orders WHERE created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)`);
+    const [[profit]] = await pool.execute(`
+      SELECT COALESCE(SUM(i.quantity * i.unit_price_crc),0) AS revenue,
+             COALESCE(SUM(i.quantity * i.cost_crc),0) AS product_cost
+      FROM order_items i JOIN orders o ON o.id=i.order_id
+      WHERE o.status IN ('Pagado','Preparacion','Despachado','Entregado')
+        AND o.created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)`);
+    const [[inventory]] = await pool.execute(`
+      SELECT COUNT(*) AS low_stock
+      FROM inventory_items i
+      LEFT JOIN inventory_thresholds t ON t.item_id=i.id
+      JOIN products p ON p.id=i.product_id
+      WHERE p.active=1 AND i.quantity IS NOT NULL
+        AND i.quantity <= COALESCE(t.minimum_quantity, 5)`);
+    const [[payments]] = await pool.execute(`
+      SELECT COUNT(*) AS pending_verification
+      FROM payments WHERE status='Pendiente'`);
+    const [[fiscal]] = await pool.execute(`
+      SELECT COUNT(*) AS rejected
+      FROM billing_documents WHERE fiscal_status IN ('rejected','rechazado')`);
+    const [[customers]] = await pool.execute(`
+      SELECT SUM(created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)) AS new_customers,
+             SUM((SELECT COUNT(*) FROM orders o WHERE o.customer_id=c.id) > 1) AS recurrent_customers
+      FROM customers c`);
+    const [dailySales] = await pool.execute(`
+      SELECT DATE(COALESCE(p.paid_at,p.created_at)) AS day, SUM(p.amount_crc) AS total
+      FROM payments p WHERE p.status='Confirmado'
+        AND COALESCE(p.paid_at,p.created_at) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY)
+      GROUP BY DATE(COALESCE(p.paid_at,p.created_at)) ORDER BY day`);
+    const collected = Number(sales.collected);
+    const paidOrders = Number(sales.paid_orders);
+    const revenue = Number(profit.revenue);
+    const productCost = Number(profit.product_cost);
+    res.json({
+      period: 'Últimos 30 días',
+      collected,
+      createdOrders: Number(orders.created_orders || 0),
+      paidOrders,
+      grossProfit: revenue - productCost,
+      ticketAverage: paidOrders ? Math.round(collected / paidOrders) : 0,
+      lowStock: Number(inventory.low_stock || 0),
+      pendingOrders: Number(orders.pending_orders || 0),
+      operationalOrders: Number(orders.operational_orders || 0),
+      pendingPaymentVerification: Number(payments.pending_verification || 0),
+      rejectedFiscalDocuments: Number(fiscal.rejected || 0),
+      newCustomers: Number(customers.new_customers || 0),
+      recurrentCustomers: Number(customers.recurrent_customers || 0),
+      dailySales: dailySales.map((row) => ({ day: row.day, total: Number(row.total) })),
+      alerts: [
+        Number(inventory.low_stock || 0) ? { type: 'inventory', label: 'Reponer inventario', count: Number(inventory.low_stock) } : null,
+        Number(orders.pending_orders || 0) ? { type: 'orders', label: 'Preparar pedidos', count: Number(orders.pending_orders) } : null,
+        Number(payments.pending_verification || 0) ? { type: 'payments', label: 'Revisar pagos', count: Number(payments.pending_verification) } : null,
+        Number(fiscal.rejected || 0) ? { type: 'billing', label: 'Revisar facturas rechazadas', count: Number(fiscal.rejected) } : null,
+      ].filter(Boolean),
+    });
+  });
+  r.post('/dashboard/ai-analysis', async (req, res) => {
+    const [[sales]] = await pool.execute("SELECT COALESCE(SUM(amount_crc),0) AS collected,COUNT(DISTINCT order_id) AS paid_orders FROM payments WHERE status='Confirmado' AND COALESCE(paid_at,created_at)>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY)");
+    const [[orders]] = await pool.execute("SELECT COUNT(*) AS created_orders,SUM(status='Pendiente') AS pending_orders FROM orders WHERE created_at>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 30 DAY)");
+    const [[inventory]] = await pool.execute("SELECT COUNT(*) AS low_stock FROM inventory_items i LEFT JOIN inventory_thresholds t ON t.item_id=i.id JOIN products p ON p.id=i.product_id WHERE p.active=1 AND i.quantity IS NOT NULL AND i.quantity<=COALESCE(t.minimum_quantity,5)");
+    const metrics = { period: 'Últimos 30 días', collected: Number(sales.collected), paidOrders: Number(sales.paid_orders), createdOrders: Number(orders.created_orders || 0), pendingOrders: Number(orders.pending_orders || 0), lowStock: Number(inventory.low_stock || 0) };
+    try { const result = await analyzeDashboardWithGemini(metrics); res.json({ configured: Boolean(result), metrics, analysis: result?.data || null, requiresHumanReview: true }); } catch (error) { res.status(502).json({ error: 'El análisis de IA no pudo completarse.', detail: error.message, metrics }); }
+  });
   r.get('/drive/status', async (req, res) => res.json(driveStatus()));
   r.get('/drive/oauth-url', async (req, res) => {
     const state = issueOAuthState();

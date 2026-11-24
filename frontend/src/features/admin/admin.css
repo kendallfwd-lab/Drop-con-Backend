@@ -88,11 +88,9 @@
 .dz-admin__demo span { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-warning); box-shadow: 0 0 0 4px color-mix(in srgb, var(--admin-warning) 16%, transparent); }
 
 .dz-admin__login {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  width: min(460px, calc(100% - 32px));
-  transform: translate(-50%, -50%);
+  position: relative;
+  width: min(500px, 100%);
+  min-height: 0;
   display: grid;
   gap: 24px;
   box-sizing: border-box;
@@ -103,6 +101,14 @@
   box-shadow: 0 30px 90px rgba(15,23,42,.16), 0 0 0 8px rgba(255,255,255,.24);
   backdrop-filter: blur(18px);
 }
+.dz-admin__login-layout { width: min(1120px, calc(100% - 48px)); min-height: 100vh; margin: 0 auto; display: grid; grid-template-columns: minmax(280px, .82fr) minmax(420px, 500px); align-items: center; justify-content: center; gap: clamp(36px, 7vw, 96px); padding: 56px 0; box-sizing: border-box; }
+.dz-admin__login-aside { display: grid; align-content: center; gap: 16px; max-width: 430px; color: var(--admin-text); }
+.dz-admin__login-aside .brand__logo { width: min(260px, 70%); height: auto; margin-bottom: 14px; }
+.dz-admin__login-aside-kicker { color: var(--admin-primary); font-size: 12px; font-weight: 900; letter-spacing: .14em; }
+.dz-admin__login-aside h1 { max-width: 10ch; margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: .98; letter-spacing: -.065em; }
+.dz-admin__login-aside p { max-width: 38ch; margin: 0; color: var(--admin-text-muted); font-size: 17px; line-height: 1.6; }
+.dz-admin__login-aside-points { display: flex; align-items: center; gap: 10px; color: var(--admin-text-muted); font-size: 13px; font-weight: 700; }
+.dz-admin__login-aside-points span { color: var(--admin-primary); font-size: 9px; }
 .dz-admin__login-brand { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .dz-admin__login-brand .brand__logo { width: 168px; height: auto; }
 .dz-admin__login-badge { padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--admin-primary) 18%, var(--admin-border)); border-radius: 999px; color: var(--admin-primary); background: color-mix(in srgb, var(--admin-primary) 7%, transparent); font-size: 10px; font-weight: 900; letter-spacing: .12em; }
@@ -151,7 +157,7 @@
 .dz-admin button:hover:not(:disabled) { border-color: color-mix(in srgb, var(--admin-primary) 45%, var(--admin-border)); background: var(--admin-surface-soft); }
 .dz-admin button:disabled { opacity: .58; cursor: not-allowed; }
 .dz-admin__primary { border: 0 !important; border-radius: 10px !important; padding: 10px 14px !important; background: var(--admin-primary) !important; color: #fff !important; font-weight: 800 !important; }
-.dz-admin__error { position: fixed; z-index: 80; top: 82px; right: 24px; max-width: 420px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--admin-danger) 9%, var(--admin-surface)); color: var(--admin-danger); }
+.dz-admin__error { position: fixed; z-index: 80; top: 82px; right: 24px; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; max-width: 420px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--admin-danger) 9%, var(--admin-surface)); color: var(--admin-danger); line-height: 1.35; box-shadow: 0 12px 30px rgba(15,23,42,.12); }
 
 .dz-admin__shell { min-height: 100vh; padding-top: var(--admin-header-height); }
 .dz-admin__sidebar {
@@ -217,6 +223,7 @@
 .dz-admin__menu, .dz-admin__sidebar-close { display: none !important; }
 
 .dz-admin__workspace { max-width: 1500px; margin: 0 auto; padding: 28px; }
+.dz-admin__workspace > * { min-width: 0; }
 .dz-admin__demo-banner { display: flex; align-items: center; gap: 8px; margin: -8px 0 18px; color: var(--admin-text-muted); font-size: 12px; }
 .dz-admin__demo-banner span { padding: 4px 7px; border-radius: 5px; color: #fff; background: var(--admin-primary); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
 .dz-admin__page-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
@@ -239,10 +246,11 @@
 .dz-admin__kpi small { color: var(--admin-success); font-size: 10px; font-weight: 800; }
 .dz-admin__kpi--purple strong { color: #a78bfa; }.dz-admin__kpi--cyan strong { color: #22d3ee; }.dz-admin__kpi--red strong { color: #fb7185; }
 .dz-admin__dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .8fr); gap: 14px; margin-bottom: 22px; }
+.dz-admin__dashboard-grid > * { min-width: 0; }
 .dz-admin__inner-card { min-width: 0; padding: 18px; border: 1px solid var(--admin-border); border-radius: 14px; background: var(--admin-surface-soft); }
 .dz-admin__inner-card h2 { margin-bottom: 3px; }.dz-admin__inner-card p { margin: 0; }
 .dz-admin__badge { align-self: flex-start; padding: 6px 8px; border: 1px solid var(--admin-border); border-radius: 7px; color: var(--admin-text-muted); font-size: 10px; font-weight: 800; }
-.dz-admin__bars { display: grid; gap: 14px; margin-top: 24px; }.dz-admin__bar-row { display: grid; grid-template-columns: 78px 1fr 28px; align-items: center; gap: 10px; color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }.dz-admin__bar-row div { height: 9px; overflow: hidden; border-radius: 99px; background: var(--admin-border); }.dz-admin__bar-row i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--admin-primary), var(--admin-cyan)); }.dz-admin__bar-row strong { color: var(--admin-text); text-align: right; }
+.dz-admin__bars { display: grid; gap: 14px; margin-top: 24px; }.dz-admin__bar-row { display: grid; grid-template-columns: 78px minmax(0, 1fr) max-content; align-items: center; gap: 10px; min-width: 0; color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }.dz-admin__bar-row span { white-space: nowrap; }.dz-admin__bar-row div { min-width: 0; height: 9px; overflow: hidden; border-radius: 99px; background: var(--admin-border); }.dz-admin__bar-row i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--admin-primary), var(--admin-cyan)); }.dz-admin__bar-row strong { color: var(--admin-text); text-align: right; white-space: nowrap; }
 .dz-admin__activity { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--admin-border); }.dz-admin__activity:first-of-type { margin-top: 14px; }.dz-admin__activity-avatar { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: linear-gradient(135deg, var(--admin-primary), var(--admin-cyan)); font-size: 12px; font-weight: 900; }.dz-admin__activity div { display: grid; gap: 3px; min-width: 0; }.dz-admin__activity strong { color: var(--admin-text); font-size: 12px; }.dz-admin__activity small { color: var(--admin-text-muted); font-size: 10px; }.dz-admin__activity b { margin-left: auto; color: var(--admin-text-muted); font-size: 10px; }
 
 .dz-admin__toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 9px; margin: 16px 0; padding: 10px; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface); }
@@ -291,11 +299,26 @@
   .dz-admin__kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .dz-admin__shell { --admin-sidebar-width: 72px; }
   .dz-admin__main { margin-left: 72px; }
+  .dz-admin__header { padding-inline: 20px; }
+  .dz-admin__workspace { padding: 22px 20px 34px; }
+  .dz-admin__dashboard-grid { grid-template-columns: minmax(0, 1fr); }
   .dz-admin__nav-group > span, .dz-admin__nav-group button span, .dz-admin__collapse span { display: none; }
   .dz-admin__nav-group button, .dz-admin__collapse { justify-content: center; padding-inline: 0; }
 }
 
+@media (max-width: 1280px) {
+  .dz-admin__dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 720px) {
+  .dz-admin__login-layout { width: min(520px, calc(100% - 24px)); min-height: 100vh; grid-template-columns: 1fr; align-content: start; gap: 22px; padding: 28px 0 34px; }
+  .dz-admin__login-aside { gap: 10px; text-align: center; justify-items: center; }
+  .dz-admin__login-aside .brand__logo { width: 190px; margin-bottom: 4px; }
+  .dz-admin__login-aside-kicker { font-size: 10px; }
+  .dz-admin__login-aside h1 { max-width: 18ch; font-size: clamp(30px, 9vw, 42px); }
+  .dz-admin__login-aside p { font-size: 14px; line-height: 1.45; }
+  .dz-admin__login-aside-points { font-size: 12px; }
+  .dz-admin__login { width: 100%; padding: 24px 20px; gap: 18px; border-radius: 18px; }
   .dz-admin__top { height: 58px; padding: 8px 12px; }
   .dz-admin__top .brand__logo { width: 112px; }
   .dz-admin__demo { display: none; }
@@ -317,13 +340,46 @@
   .dz-admin__global-search { display: none; }
   .dz-admin__menu { display: grid !important; width: 38px; height: 38px; place-items: center; border: 1px solid var(--admin-border); border-radius: 9px; background: var(--admin-surface); color: var(--admin-text); }
   .dz-admin__workspace { padding: 18px 12px 40px; }
-  .dz-admin__page-heading h1 { font-size: 24px; }
+  .dz-admin__page-heading { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .dz-admin__page-heading h1 { font-size: clamp(22px, 7vw, 28px); }
   .dz-admin__overview { grid-template-columns: 1fr; }
   .dz-admin__kpi-grid, .dz-admin__dashboard-grid { grid-template-columns: 1fr; }
   .dz-admin__header-actions button:first-child { display: none; }
   .dz-admin__breadcrumb span { display: none; }
   .dz-admin__breadcrumb span::after { display: none; }
   .dz-admin__toolbar label { width: 100%; margin-left: 0; }
+  .dz-admin__toolbar { align-items: stretch; padding: 8px; }
+  .dz-admin__toolbar button { flex: 1 1 auto; }
+  .dz-admin__toolbar label { order: 3; }
+  .dz-admin__card { padding: 15px; border-radius: 12px; }
+  .dz-admin__dashboard-grid { gap: 12px; }
+  .dz-admin__inner-card { padding: 14px; }
+  .dz-admin__bar-row { grid-template-columns: 48px minmax(0, 1fr); gap: 7px; }
+  .dz-admin__bar-row strong { grid-column: 2; text-align: left; font-size: 11px; }
+  .dz-admin__bars { gap: 12px; margin-top: 18px; }
+  .dz-admin__section-heading { flex-direction: column; gap: 8px; }
+  .dz-admin__section-heading > button, .dz-admin__section-heading > .dz-admin__count { align-self: flex-start; }
+  .dz-admin__activity { align-items: flex-start; flex-wrap: wrap; }
+  .dz-admin__activity button { margin-left: 40px; }
+  .dz-admin__table { margin-inline: -1px; }
+  .dz-admin table { min-width: 600px; }
+  .dz-admin th, .dz-admin td { padding: 10px 11px; }
+  .dz-admin__demo-login { grid-template-columns: 1fr; }
+  .dz-admin__demo-login code { justify-self: start; }
+  .dz-admin__error { top: 68px; right: 16px; }
+}
+
+@media (max-width: 420px) {
+  .dz-admin__top { gap: 8px; }
+  .dz-admin__top .brand__logo { width: 104px; }
+  .dz-admin__top button { padding: 8px 9px; font-size: 12px; }
+  .dz-admin__breadcrumb { font-size: 12px; }
+  .dz-admin__header-actions { gap: 5px; }
+  .dz-admin__header-actions button, .dz-admin__menu { width: 34px; height: 34px; }
+  .dz-admin__avatar { width: 34px; height: 34px; }
+  .dz-admin__workspace { padding-inline: 10px; }
+  .dz-admin__kpi { min-height: 96px; padding: 13px; }
+  .dz-admin__kpi strong { font-size: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

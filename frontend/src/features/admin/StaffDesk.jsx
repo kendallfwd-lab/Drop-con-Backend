@@ -18,6 +18,7 @@ const tabs = {
   warranties: ['Garantías', ShieldCheck],
   promotions: ['Promociones', Megaphone],
   finance: ['Finanzas', CircleDollarSign],
+  advanced: ['Operaciones avanzadas', Boxes],
   billing: ['Facturación', CircleDollarSign],
   chat: ['Asistente IA', Bot],
   policies: ['Gobernanza', ShieldCheck],
@@ -66,6 +67,7 @@ export default function StaffDesk({
   const navigate = useNavigate();
   const [tab, setTab] = useState(admin && location.pathname.endsWith('/facturacion') ? 'billing' : (admin ? 'summary' : 'crm'));
   const [data, setData] = useState(null);
+  const [dashboard, setDashboard] = useState(null);
   const [users, setUsers] = useState([]);
   const [articles, setArticles] = useState([]);
   const [events, setEvents] = useState([]);
@@ -79,8 +81,13 @@ export default function StaffDesk({
   const [expenses, setExpenses] = useState([]);
   const [profit, setProfit] = useState(null);
   const [billing, setBilling] = useState([]);
+  const [operations, setOperations] = useState(null);
+  const [orderDetail, setOrderDetail] = useState(null);
   const [trash, setTrash] = useState(DEMO_TRASH);
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = window.localStorage.getItem('dz-admin-theme-v2');
+    return savedTheme === 'dark' ? 'dark' : 'light';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -105,10 +112,13 @@ export default function StaffDesk({
       setUsers(accounts);
       setEvents(history);
       setDrive(await api('/staff/drive/status'));
-      const [nextOrders, nextCustomers, nextPromotions, nextSuppliers, nextWarranties, nextExpenses, nextProfit] = await Promise.all([
+      setOperations(await api('/operations/overview'));
+      const [nextDashboard, nextOrders, nextCustomers, nextPromotions, nextSuppliers, nextWarranties, nextExpenses, nextProfit] = await Promise.all([
+        api('/staff/dashboard'),
         api('/orders'), api('/customers'), api('/promotions'), api('/suppliers'),
         api('/warranties'), api('/expenses'), api('/reports/profit'),
       ]);
+      setDashboard(nextDashboard);
       setOrders(nextOrders.length ? nextOrders : [
         { id: 'DEMO-10428', customer_name: 'María López', channel: 'Tienda', status: 'Preparacion', total_crc: 129900, itemCount: 2 },
         { id: 'DEMO-10420', customer_name: 'Carlos Rojas', channel: 'WhatsApp', status: 'Pagado', total_crc: 65900, itemCount: 1 },
@@ -145,7 +155,7 @@ export default function StaffDesk({
   }, []);
   useEffect(() => {
     document.documentElement.setAttribute('data-admin-theme', theme);
-    window.localStorage.setItem('dz-admin-theme', theme);
+    window.localStorage.setItem('dz-admin-theme-v2', theme);
   }, [theme]);
   async function act(work, notice, refresh = true) {
     clearError();
@@ -160,6 +170,11 @@ export default function StaffDesk({
     } finally {
       setBusy(false);
     }
+  }
+  async function showOrder(id) {
+    clearError();
+    setBusy(true);
+    try { setOrderDetail(await api(`/orders/${id}`)); } catch (error) { reportError(error); } finally { setBusy(false); }
   }
   function submit(event, fn) {
     event.preventDefault();
@@ -178,7 +193,7 @@ export default function StaffDesk({
         {[
           ['GENERAL', ['summary','crm','operations']],
           ['OPERACIONES', ['catalog','inventory','customers','suppliers','warranties']],
-          ['NEGOCIO', ['promotions','billing','finance']],
+          ['NEGOCIO', ['promotions','billing','finance','advanced']],
           ['ADMINISTRACIÓN', ['chat','policies','users','trash']],
         ].map(([group, keys]) => (
           <div className="dz-admin__nav-group" key={group}>
@@ -230,11 +245,12 @@ export default function StaffDesk({
       {tab === 'summary' && data && (
         <section className="dz-admin__card">
           <div className="dz-admin__kpi-grid">
-            <div className="dz-admin__kpi dz-admin__kpi--blue"><span>Ventas totales</span><strong>₡1,248,500</strong><small>↑ 18.4% vs. mes anterior</small></div>
-            <div className="dz-admin__kpi dz-admin__kpi--purple"><span>Pedidos</span><strong>146</strong><small>↑ 12.9% en el período</small></div>
-            <div className="dz-admin__kpi dz-admin__kpi--cyan"><span>Clientes activos</span><strong>{customers.length || '1,032'}</strong><small>↑ 7.1% de recurrencia</small></div>
-            <div className="dz-admin__kpi dz-admin__kpi--red"><span>Stock bajo</span><strong>{data.inventory.soldOut + data.inventory.pending}</strong><small>Requiere atención</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--blue"><span>Ventas cobradas</span><strong>₡{Number(dashboard?.collected || 0).toLocaleString('es-CR')}</strong><small>{dashboard?.period || 'Datos reales'}</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--purple"><span>Pedidos creados</span><strong>{dashboard?.createdOrders ?? 0}</strong><small>{dashboard?.paidOrders ?? 0} con pago confirmado</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--cyan"><span>Utilidad bruta</span><strong>₡{Number(dashboard?.grossProfit || 0).toLocaleString('es-CR')}</strong><small>Calculada con costos históricos</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--red"><span>Ticket promedio</span><strong>₡{Number(dashboard?.ticketAverage || 0).toLocaleString('es-CR')}</strong><small>{dashboard?.lowStock ?? 0} SKU con stock bajo</small></div>
           </div>
+          <button type="button" disabled={busy} onClick={() => act(async () => { const result = await api('/staff/dashboard/ai-analysis', 'POST', {}); setMessage(result.analysis ? `${result.analysis.summary} Recomendaciones: ${result.analysis.recommendations.join(' · ')}` : 'Gemini no está configurado; los datos confirmados siguen disponibles.'); }, '', false)}>Analizar dashboard con Gemini</button>
           <div className="dz-admin__dashboard-grid">
             <section className="dz-admin__inner-card">
               <div className="dz-admin__section-heading"><div><h2>Ventas por canal</h2><p>Oportunidades y conversiones de los últimos 30 días.</p></div><span className="dz-admin__badge">Últimos 30 días</span></div>
@@ -246,6 +262,24 @@ export default function StaffDesk({
               <div className="dz-admin__section-heading"><div><h2>Actividad reciente</h2><p>Seguimiento comercial del equipo.</p></div><button type="button" onClick={() => setTab('crm')}>Ver todo</button></div>
               {data.leads.slice(0, 3).map((lead) => <div className="dz-admin__activity" key={lead.id}><span className="dz-admin__activity-avatar">{lead.name.slice(0, 1)}</span><div><strong>{lead.name}</strong><small>{lead.channel} · {lead.stage}</small></div><b>#{String(lead.id).slice(-4)}</b></div>)}
             </section>
+          </div>
+          <div className="dz-admin__dashboard-grid">
+            <section className="dz-admin__inner-card">
+              <div className="dz-admin__section-heading"><div><h2>Ventas cobradas por día</h2><p>Pagos confirmados de los últimos 30 días.</p></div><span className="dz-admin__badge">Datos MySQL</span></div>
+              {!dashboard?.dailySales?.length ? <p>No hay pagos confirmados en este período.</p> : <div className="dz-admin__bars" aria-label="Ventas cobradas por día">
+                {dashboard.dailySales.slice(-7).map((row) => { const max = Math.max(...dashboard.dailySales.map((item) => item.total), 1); const day = new Date(`${String(row.day).slice(0, 10)}T12:00:00`).toLocaleDateString('es-CR', { day: '2-digit', month: 'short' }); return <div className="dz-admin__bar-row" key={row.day}><span>{day}</span><div><i style={{ width: `${Math.max(3, (row.total / max) * 100)}%` }} /></div><strong>₡{row.total.toLocaleString('es-CR')}</strong></div>; })}
+              </div>}
+            </section>
+            <section className="dz-admin__inner-card">
+              <div className="dz-admin__section-heading"><div><h2>Alertas accionables</h2><p>Prioridades calculadas desde pedidos, pagos e inventario.</p></div></div>
+              {!dashboard?.alerts?.length ? <p>No hay alertas pendientes.</p> : dashboard.alerts.map((alert) => <div className="dz-admin__activity" key={alert.type}><span className="dz-admin__activity-avatar">!</span><div><strong>{alert.label}</strong><small>{alert.count} registros requieren revisión</small></div><button type="button" onClick={() => setTab(alert.type === 'inventory' ? 'inventory' : alert.type === 'payments' || alert.type === 'orders' ? 'operations' : 'billing')}>Abrir</button></div>)}
+            </section>
+          </div>
+          <div className="dz-admin__kpi-grid">
+            <div className="dz-admin__kpi"><span>Clientes nuevos</span><strong>{dashboard?.newCustomers ?? 0}</strong><small>Últimos 30 días</small></div>
+            <div className="dz-admin__kpi"><span>Clientes recurrentes</span><strong>{dashboard?.recurrentCustomers ?? 0}</strong><small>Más de una compra</small></div>
+            <div className="dz-admin__kpi"><span>Pagos por revisar</span><strong>{dashboard?.pendingPaymentVerification ?? 0}</strong><small>Sin confirmación</small></div>
+            <div className="dz-admin__kpi"><span>Facturas rechazadas</span><strong>{dashboard?.rejectedFiscalDocuments ?? 0}</strong><small>Estado fiscal</small></div>
           </div>
           <h2>Rendimiento por canal</h2>
           <p>
@@ -376,7 +410,8 @@ export default function StaffDesk({
           {orders.map((order) => (
             <article className="dz-admin__lead" key={order.id}>
               <strong>#{order.id.slice(0, 8)} · {order.customer_name}</strong>
-              <p>{order.channel} · {order.status} · ₡{Number(order.total_crc).toLocaleString('es-CR')}</p>
+              <p>{order.channel} · Pedido: {order.status} · Pago: {order.payment_status || 'Pendiente'} · Envío: {order.shipping_status || 'Pendiente'} · ₡{Number(order.total_crc).toLocaleString('es-CR')}</p>
+              <button type="button" disabled={busy} onClick={() => showOrder(order.id)}>Ver expediente</button>
               <label>Estado
                 <select value={order.status} onChange={(event) => act(() => api('/orders/' + order.id + '/status', 'PATCH', { status: event.target.value }), 'Estado del pedido actualizado.')}>
                   {['Pendiente','Preparacion','Despachado','Entregado','Cancelado'].map((status) => <option key={status}>{status}</option>)}
@@ -430,6 +465,21 @@ export default function StaffDesk({
           ))}
         </section>
       )}
+      {tab === 'advanced' && admin && (
+        <section className="dz-admin__card">
+          <div className="dz-admin__section-heading"><div><span>Operación conectada</span><h2>Inventario, compras, devoluciones, caja y proveedores</h2><p>Funciones operativas sobre MySQL. Las integraciones externas permanecen en sandbox.</p></div><button type="button" disabled={busy} onClick={() => act(() => api('/operations/roles/seed', 'POST'), 'Roles y permisos iniciales preparados.')}>Preparar roles</button></div>
+          <div className="dz-admin__kpi-grid">
+            <div className="dz-admin__kpi"><span>Cajas abiertas</span><strong>{operations?.cash?.open_sessions ?? 0}</strong><small>Arqueo controlado</small></div>
+            <div className="dz-admin__kpi"><span>Compras pendientes</span><strong>{operations?.purchases?.pending ?? 0}</strong><small>Solicitudes y órdenes</small></div>
+            <div className="dz-admin__kpi"><span>Devoluciones activas</span><strong>{operations?.returns?.pending ?? 0}</strong><small>Requieren inspección</small></div>
+            <div className="dz-admin__kpi"><span>Eventos sandbox</span><strong>{operations?.providers?.length ?? 0}</strong><small>Idempotencia habilitada</small></div>
+          </div>
+          <div className="dz-admin__dashboard-grid">
+            <section className="dz-admin__inner-card"><h3>Capacidades activas</h3><ul><li>Reservas y disponibilidad de inventario.</li><li>Órdenes de compra y recepciones.</li><li>Casos de devolución con inspección.</li><li>Apertura, movimientos y cierre de caja.</li><li>Roles y permisos persistidos en MySQL.</li></ul></section>
+            <section className="dz-admin__inner-card"><h3>Proveedores sandbox</h3>{!operations?.providers?.length ? <p>No hay eventos externos; el sistema no envía datos reales.</p> : operations.providers.map((event) => <p key={event.external_id}><strong>{event.provider}</strong> · {event.event_type} · {event.status}</p>)}</section>
+          </div>
+        </section>
+      )}
       {tab === 'billing' && admin && (
         <section className="dz-admin__card dz-admin__billing-panel">
           <div className="dz-admin__section-heading">
@@ -451,7 +501,7 @@ export default function StaffDesk({
             <button className="dz-admin__primary" disabled={busy || !orders.some((order) => /^[0-9a-f-]{36}$/i.test(order.id))}>Nuevo documento</button>
           </form>
           {!billing.length && <p className="dz-admin__empty-state">Todavía no hay documentos. Crea una cotización o confirmación desde un pedido real.</p>}
-          {!!billing.length && <div className="dz-admin__table"><table><caption>Documentos recientes</caption><thead><tr><th>Pedido</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{billing.map((document) => <tr key={document.id}><th>#{document.order_id.slice(0, 8)}</th><td>{document.customer_name || 'Cliente'}</td><td>{document.document_kind}</td><td>₡{Number(document.total_crc).toLocaleString('es-CR')}</td><td><span className="dz-admin__status-pill">{document.document_status}</span></td><td className="dz-admin__billing-actions"><button type="button" disabled={busy} onClick={() => act(() => api(`/billing/documents/${document.id}/issue`, 'POST'), 'Documento emitido.')}>{document.document_status === 'issued' ? 'Actualizar' : 'Emitir'}</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => window.open(`/api/admin/billing/documents/${document.id}/download`, '_blank', 'noopener,noreferrer')}>PDF</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => act(async () => { const result = await api(`/billing/documents/${document.id}/deliver`, 'POST', { channel: 'whatsapp_web', idempotencyKey: `wa:${document.id}:${Date.now()}` }); window.open(result.whatsappUrl, '_blank', 'noopener,noreferrer'); }, 'WhatsApp Web preparado.')}>WhatsApp</button></td></tr>)}</tbody></table></div>}
+          {!!billing.length && <div className="dz-admin__table"><table><caption>Documentos recientes</caption><thead><tr><th>Pedido</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{billing.map((document) => <tr key={document.id}><th>#{document.order_id.slice(0, 8)}</th><td>{document.customer_name || 'Cliente'}</td><td>{document.document_kind}</td><td>₡{Number(document.total_crc).toLocaleString('es-CR')}</td><td><span className="dz-admin__status-pill">{document.document_status}</span></td><td className="dz-admin__billing-actions"><button type="button" disabled={busy} onClick={() => act(() => api(`/billing/documents/${document.id}/issue`, 'POST'), 'Documento emitido.')}>{document.document_status === 'issued' ? 'Actualizar' : 'Emitir'}</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => window.open(`/api/admin/billing/documents/${document.id}/preview.svg`, '_blank', 'noopener,noreferrer')}>Vista</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => act(async () => { const result = await api(`/billing/documents/${document.id}/ai-review`, 'POST', {}); setMessage(result.suggestion ? result.suggestion.summary : 'Gemini no está configurado; revisá la vista previa determinística.'); }, '', false)}>IA</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => window.open(`/api/admin/billing/documents/${document.id}/download`, '_blank', 'noopener,noreferrer')}>PDF</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => act(async () => { const result = await api(`/billing/documents/${document.id}/deliver`, 'POST', { channel: 'whatsapp_web', idempotencyKey: `wa:${document.id}:${Date.now()}` }); window.open(result.whatsappUrl, '_blank', 'noopener,noreferrer'); }, 'WhatsApp Web preparado.')}>WhatsApp</button></td></tr>)}</tbody></table></div>}
           <p className="dz-admin__billing-note">Los PDFs comerciales muestran explícitamente que no son comprobantes fiscales. La emisión fiscal, XML, Hacienda y WhatsApp Cloud permanecen desactivados hasta configurar un proveedor autorizado.</p>
         </section>
       )}
@@ -748,6 +798,28 @@ export default function StaffDesk({
               </div>
             </article>
           ))}
+          {orderDetail && <section className="dz-admin__inner-card dz-admin__order-detail">
+            <div className="dz-admin__section-heading"><div><h2>Expediente #{orderDetail.id.slice(0, 8)}</h2><p>{orderDetail.customer_name} · {orderDetail.phone}</p></div><button type="button" onClick={() => setOrderDetail(null)}>Cerrar</button></div>
+            <p><strong>Pedido:</strong> {orderDetail.status} · <strong>Envío:</strong> {orderDetail.shipping_status || 'Pendiente'} · <strong>Total:</strong> ₡{Number(orderDetail.total_crc).toLocaleString('es-CR')}</p>
+            <h3>Productos y precios congelados</h3>
+            <ul>{orderDetail.items.map((item) => <li key={item.id}>{item.name} {item.variant_label ? `(${item.variant_label})` : ''} · {item.quantity} × ₡{Number(item.unit_price_crc).toLocaleString('es-CR')}</li>)}</ul>
+            <h3>Pagos y documentos</h3>
+            <p>{orderDetail.payments.length ? orderDetail.payments.map((payment) => `${payment.status} ₡${Number(payment.amount_crc).toLocaleString('es-CR')}`).join(' · ') : 'Sin pagos registrados.'}</p>
+            <p>{orderDetail.documents.length ? orderDetail.documents.map((document) => `${document.document_kind}: ${document.document_status}/${document.fiscal_status}`).join(' · ') : 'Sin documentos relacionados.'}</p>
+            <form className="dz-admin__fields" onSubmit={(event) => submit(event, (values) => act(() => api(`/orders/${orderDetail.id}/shipping`, 'PATCH', values), 'Envío actualizado.'))}>
+              <label>Estado de envío<select name="status" defaultValue={orderDetail.shipping_status || 'Pendiente'}>{['Pendiente','Preparando','Transito','Entregado','Incidencia'].map((status) => <option key={status}>{status}</option>)}</select></label>
+              <label>Transportista<input name="carrier" defaultValue={orderDetail.carrier || ''} /></label>
+              <label>Seguimiento<input name="trackingNumber" defaultValue={orderDetail.tracking_number || ''} /></label>
+              <label>Notas de entrega<input name="deliveryNotes" defaultValue={orderDetail.delivery_notes || ''} /></label>
+              <button type="submit" disabled={busy}>Guardar envío</button>
+            </form>
+            <form className="dz-admin__fields" onSubmit={(event) => submit(event, (values, form) => act(async () => { await api(`/orders/${orderDetail.id}/notes`, 'POST', values); form.reset(); await showOrder(orderDetail.id); }, 'Nota agregada.', false))}>
+              <label>Nota interna<input name="body" required placeholder="Registrar seguimiento interno" /></label>
+              <button type="submit" disabled={busy}>Agregar nota</button>
+            </form>
+            <h3>Historial</h3>
+            {!orderDetail.history.length ? <p>Sin cambios registrados.</p> : orderDetail.history.map((event) => <p key={event.id}>{event.from_status || 'Inicio'} → {event.to_status} · {event.email || 'sistema'} · {new Date(event.created_at).toLocaleString('es-CR')}</p>)}
+          </section>}
         </section>
       )}
       </main>

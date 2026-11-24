@@ -91,7 +91,16 @@ export default function AdminPage() {
     </header>}
     {error && <p className="dz-admin__error" role="alert">{error}</p>}
     {session === undefined && <p role="status">Verificando sesión…</p>}
-    {session === null && <form className="dz-admin__login" onSubmit={authenticate} aria-describedby="admin-login-help">
+    {session === null && <div className="dz-admin__login-layout">
+      <section className="dz-admin__login-aside" aria-label="Información de DROP ZONE CR">
+        <Brand />
+        <span className="dz-admin__login-aside-kicker">DROP ZONE CR</span>
+        <h1>Administra tu tienda con claridad.</h1>
+        <p>Productos, pedidos, inventario y clientes en un solo lugar para que tu equipo avance más rápido.</p>
+        <div className="dz-admin__login-aside-points"><span>●</span> Datos conectados a MySQL</div>
+        <div className="dz-admin__login-aside-points"><span>●</span> Acceso protegido para tu equipo</div>
+      </section>
+      <form className="dz-admin__login" onSubmit={authenticate} aria-describedby="admin-login-help">
       <div className="dz-admin__login-brand"><Brand /><span className="dz-admin__login-badge">ADMIN</span></div>
       <h1>Acceso del equipo de {settings.brand}</h1>
       <p id="admin-login-help" className="dz-admin__login-help">Ingresa para administrar productos, pedidos e inventario de {settings.brand}.</p>
@@ -106,7 +115,8 @@ export default function AdminPage() {
       <button className="dz-admin__primary dz-admin__login-submit" disabled={busy}>{busy ? 'Ingresando…' : 'Iniciar sesión'}</button>
       <p className="dz-admin__login-footnote"><span aria-hidden="true">●</span> Acceso protegido para el equipo autorizado</p>
       <Link className="dz-admin__back-link" to="/">← Volver a la tienda</Link>
-    </form>}
+      </form>
+    </div>}
     {session && <StaffDesk session={session} api={api} reportError={handleError} clearError={() => setError('')}>
       <Dashboard brand={settings.brand} email={session.email} reportError={handleError} clearError={() => setError('')} />
     </StaffDesk>}
@@ -123,9 +133,12 @@ function Dashboard({ brand, email, reportError, clearError }) {
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
-    const [nextProducts, nextInventory] = await Promise.all([api('/products'), api('/inventory')]);
-    setProducts(nextProducts);
-    setInventory(nextInventory);
+    const results = await Promise.allSettled([api('/products'), api('/inventory')]);
+    const [productsResult, inventoryResult] = results;
+    if (productsResult.status === 'fulfilled') setProducts(productsResult.value);
+    if (inventoryResult.status === 'fulfilled') setInventory(inventoryResult.value);
+    const failed = results.find((result) => result.status === 'rejected');
+    if (failed && results.every((result) => result.status === 'rejected')) throw failed.reason;
   }
 
   useEffect(() => { refresh().catch(reportError); }, []); // Run once for this authenticated dashboard.

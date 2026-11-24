@@ -7,6 +7,7 @@ import { catalog } from './catalog.js';
 import { transaction } from './db.js';
 import { hashPassword, verifyPassword } from './password.js';
 import { billingRoutes } from './billing.js';
+import { operationsRoutes } from './operations.js';
 
 const sessionAge = 8 * 60 * 60 * 1000;
 const cookieName = 'dz_admin';
@@ -46,14 +47,14 @@ function readToken(req) {
   return req.headers.cookie?.match(/(?:^|;\s*)dz_admin=([a-f0-9]{64})(?:;|$)/)?.[1];
 }
 
-export function adminRoutes(pool, { production, origin }) {
+export function adminRoutes(pool, { production, origin, allowedOrigins = new Set([origin]), isAllowedOrigin = (requestOrigin) => allowedOrigins.has(requestOrigin) }) {
   const router = Router();
   const cookie = { httpOnly: true, secure: production, sameSite: 'strict', path: '/api/admin' };
   const dummyHash = hashPassword(randomBytes(24).toString('hex'));
 
   router.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.get('Origin') !== origin) {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isAllowedOrigin(req.get('Origin'))) {
       return res.status(403).json({ error: 'Origen de la solicitud no autorizado.' });
     }
     next();
@@ -113,6 +114,7 @@ export function adminRoutes(pool, { production, origin }) {
   router.use('/staff', staffRoutes(pool));
   router.use(requireAdmin);
   router.use('/billing', billingRoutes(pool));
+  router.use('/operations', operationsRoutes(pool));
 
   router.get('/products', async (req, res) => res.json(await catalog(pool, true)));
 
@@ -204,6 +206,9 @@ export function adminRoutes(pool, { production, origin }) {
   router.get('/orders', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT o.*, COUNT(i.id) AS itemCount,
+       COALESCE((SELECT SUM(p.amount_crc) FROM payments p WHERE p.order_id=o.id AND p.status='Confirmado'),0) AS paid_crc,
+       COALESCE((SELECT p.status FROM payments p WHERE p.order_id=o.id ORDER BY p.created_at DESC LIMIT 1),'Pendiente') AS payment_status,
+       COALESCE((SELECT s.status FROM order_shipping s WHERE s.order_id=o.id),'Pendiente') AS shipping_status,
        COALESCE(SUM(i.quantity * i.unit_price_crc),0) AS itemSubtotal
        FROM orders o LEFT JOIN order_items i ON i.order_id=o.id
        GROUP BY o.id ORDER BY o.created_at DESC`,
@@ -213,10 +218,19 @@ export function adminRoutes(pool, { production, origin }) {
 
   router.get('/orders/:id', async (req, res) => {
     const id = z.string().uuid().parse(req.params.id);
-    const [[order]] = await pool.execute('SELECT * FROM orders WHERE id=?', [id]);
+    const [[order]] = await pool.execute(`SELECT o.*, s.status AS shipping_status, s.carrier,
+      s.tracking_number, s.delivery_notes, a.email AS assigned_email
+      FROM orders o LEFT JOIN order_shipping s ON s.order_id=o.id
+      LEFT JOIN admins a ON a.id=s.updated_by WHERE o.id=?`, [id]);
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
     const [items] = await pool.execute('SELECT * FROM order_items WHERE order_id=?', [id]);
-    res.json({ ...order, items });
+    const [payments] = await pool.execute('SELECT id,amount_crc,method,status,reference,paid_at,created_at FROM payments WHERE order_id=? ORDER BY created_at DESC', [id]);
+    const [documents] = await pool.execute('SELECT id,document_kind,document_status,fiscal_status,document_number,issued_at FROM billing_documents WHERE order_id=? ORDER BY created_at DESC', [id]);
+    const [history] = await pool.execute(`SELECT h.*, a.email FROM order_status_history h
+      LEFT JOIN admins a ON a.id=h.admin_id WHERE h.order_id=? ORDER BY h.created_at DESC`, [id]);
+    const [notes] = await pool.execute(`SELECT n.*, a.email FROM order_notes n
+      LEFT JOIN admins a ON a.id=n.admin_id WHERE n.order_id=? ORDER BY n.created_at DESC`, [id]);
+    res.json({ ...order, items, payments, documents, history, notes });
   });
 
   router.patch('/orders/:id/status', async (req, res) => {
@@ -246,6 +260,10 @@ export function adminRoutes(pool, { production, origin }) {
       }
       await connection.execute('UPDATE orders SET status=?, updated_at=UTC_TIMESTAMP(3) WHERE id=?', [status, id]);
       await connection.execute(
+        'INSERT INTO order_status_history(order_id,admin_id,from_status,to_status,reason,ip_address) VALUES (?,?,?,?,?,?)',
+        [id, req.admin.id, order.status, status, req.body?.reason || null, req.ip || null],
+      );
+      await connection.execute(
         'INSERT INTO audit_logs(admin_id,action,entity_type,entity_id,details) VALUES (?, ?, ?, ?, ?)',
         [req.admin.id, 'Cambió estado', 'order', id, JSON.stringify({ from: order.status, to: status })],
       );
@@ -255,6 +273,33 @@ export function adminRoutes(pool, { production, origin }) {
     if (changed === 'unchanged') return res.status(204).end();
     if (changed === 'payment_required') return res.status(409).json({ error: 'El pago debe confirmarse desde el flujo de pagos; no se puede marcar manualmente como Pagado.' });
     if (changed === 'invalid_transition') return res.status(409).json({ error: 'Transición de pedido no permitida para el estado actual.' });
+    res.status(204).end();
+  });
+
+  router.post('/orders/:id/notes', async (req, res) => {
+    const id = z.string().uuid().parse(req.params.id);
+    const body = z.object({ body: z.string().trim().min(2).max(2000) }).parse(req.body);
+    const [[order]] = await pool.execute('SELECT id FROM orders WHERE id=?', [id]);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    const [result] = await pool.execute('INSERT INTO order_notes(order_id,admin_id,body) VALUES (?,?,?)', [id, req.admin.id, body.body]);
+    await pool.execute('INSERT INTO audit_logs(admin_id,action,entity_type,entity_id,details) VALUES (?,?,?,?,?)', [req.admin.id, 'Agregó nota', 'order', id, JSON.stringify({ noteId: result.insertId })]);
+    res.status(201).json({ id: result.insertId });
+  });
+
+  router.patch('/orders/:id/shipping', async (req, res) => {
+    const id = z.string().uuid().parse(req.params.id);
+    const body = z.object({
+      status: z.enum(['Pendiente','Preparando','Transito','Entregado','Incidencia']),
+      carrier: z.string().trim().max(160).optional(),
+      trackingNumber: z.string().trim().max(180).optional(),
+      deliveryNotes: z.string().trim().max(1000).optional(),
+    }).parse(req.body);
+    const [[order]] = await pool.execute('SELECT id FROM orders WHERE id=?', [id]);
+    if (!order) return res.status(404).json({ error: 'Pedido no encontrado.' });
+    await pool.execute(`INSERT INTO order_shipping(order_id,status,carrier,tracking_number,delivery_notes,updated_by,updated_at)
+      VALUES (?,?,?,?,?,?,UTC_TIMESTAMP(3)) ON DUPLICATE KEY UPDATE status=VALUES(status),carrier=VALUES(carrier),tracking_number=VALUES(tracking_number),delivery_notes=VALUES(delivery_notes),updated_by=VALUES(updated_by),updated_at=UTC_TIMESTAMP(3)`,
+    [id, body.status, body.carrier || null, body.trackingNumber || null, body.deliveryNotes || null, req.admin.id]);
+    await pool.execute('INSERT INTO audit_logs(admin_id,action,entity_type,entity_id,details) VALUES (?,?,?,?,?)', [req.admin.id, 'Actualizó envío', 'order', id, JSON.stringify(body)]);
     res.status(204).end();
   });
 

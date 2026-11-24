@@ -12,6 +12,18 @@ import { publicDocumentRoutes } from './billing.js';
 
 const production = process.env.NODE_ENV === 'production';
 const origin = new URL(process.env.APP_ORIGIN || 'http://127.0.0.1:5173');
+const allowedAdminOrigins = new Set([origin.origin]);
+const isAllowedAdminOrigin = (requestOrigin) => {
+  if (allowedAdminOrigins.has(requestOrigin)) return true;
+  if (production || !requestOrigin) return false;
+  try {
+    const candidate = new URL(requestOrigin);
+    return candidate.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(candidate.hostname)
+      && ['127.0.0.1', 'localhost'].includes(origin.hostname);
+  } catch {
+    return false;
+  }
+};
 if (production && origin.protocol !== 'https:') throw new Error('APP_ORIGIN debe usar HTTPS en producción.');
 
 const pool = createPool();
@@ -23,7 +35,7 @@ app.use(helmet({
   strictTransportSecurity: production ? undefined : false,
 }));
 app.use('/api', express.json({ limit: '16kb' }));
-app.use('/api/admin', adminRoutes(pool, { production, origin: origin.origin }));
+app.use('/api/admin', adminRoutes(pool, { production, origin: origin.origin, allowedOrigins: allowedAdminOrigins, isAllowedOrigin: isAllowedAdminOrigin }));
 app.use('/api/public/documents', publicDocumentRoutes(pool));
 app.get('/api/health', async (req, res) => {
   await pool.query('SELECT 1');

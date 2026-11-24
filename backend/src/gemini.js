@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { z } from 'zod';
 
 const model = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const timeoutMs = 30_000;
@@ -49,4 +50,44 @@ export async function generateGroundedAnswer(question, sources) {
     throw new Error('Gemini returned invalid citations');
   }
   return { text, model: model(), usage: response.usageMetadata || null };
+}
+
+const invoiceSuggestionSchema = z.object({
+  summary: z.string().max(1000),
+  missingFields: z.array(z.string().max(160)).max(20),
+  inconsistencies: z.array(z.string().max(240)).max(20),
+  draftMessage: z.string().max(1000),
+});
+
+const dashboardSuggestionSchema = z.object({
+  summary: z.string().max(1200),
+  findings: z.array(z.string().max(240)).max(10),
+  recommendations: z.array(z.string().max(240)).max(10),
+});
+
+async function generateJson(instruction, payload, schema) {
+  const ai = getClient();
+  if (!ai) return null;
+  const response = await Promise.race([
+    ai.models.generateContent({ model: model(), contents: JSON.stringify(payload), config: { systemInstruction: instruction, responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 800 } }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Gemini timeout')), timeoutMs)),
+  ]);
+  const parsed = JSON.parse(response.text?.trim() || '{}');
+  return { data: schema.parse(parsed), model: model(), usage: response.usageMetadata || null };
+}
+
+export function reviewInvoiceWithGemini(invoice) {
+  return generateJson(
+    'Respondé solo JSON válido con summary, missingFields, inconsistencies y draftMessage. Analizá los datos recibidos sin inventar ni corregir valores. Los importes, impuestos, estados y datos fiscales son definitivos del sistema. Si falta algo, indicalo como revisión humana. No afirmes aceptación de Hacienda ni pago.',
+    invoice,
+    invoiceSuggestionSchema,
+  );
+}
+
+export function analyzeDashboardWithGemini(metrics) {
+  return generateJson(
+    'Respondé solo JSON válido con summary, findings y recommendations. Usá exclusivamente las métricas recibidas. Diferenciá datos confirmados de interpretación y recomendaciones. No ejecutes acciones ni inventes cifras.',
+    metrics,
+    dashboardSuggestionSchema,
+  );
 }

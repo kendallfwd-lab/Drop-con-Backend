@@ -4,7 +4,8 @@ import path from 'node:path';
 import { Router } from 'express';
 import { z } from 'zod';
 import { transaction } from './db.js';
-import { buildCommercialPdf } from './billing-pdf.js';
+import { buildCommercialPdf, buildCommercialSvg } from './billing-pdf.js';
+import { geminiStatus, reviewInvoiceWithGemini } from './gemini.js';
 
 const documentKinds = z.enum(['quote', 'order_confirmation', 'commercial_receipt']);
 const deliveryChannels = z.enum(['whatsapp_web']);
@@ -25,7 +26,7 @@ async function documentSnapshot(pool, orderId) {
   return { order, items, customer: customer || { name: order.customer_name, phone: order.phone, email: null } };
 }
 
-async function getDocument(pool, id) {
+export async function getDocument(pool, id) {
   const [[document]] = await pool.execute(
     `SELECT d.*, c.email AS customer_email, c.phone AS customer_phone
      FROM billing_documents d LEFT JOIN customers c ON c.id=d.customer_id WHERE d.id=?`, [id],
@@ -114,6 +115,23 @@ export function billingRoutes(pool) {
     if (document.document_status !== 'issued') return res.status(409).json({ error: 'El documento debe emitirse antes de descargarlo.' });
     const pdf = await ensurePdf(pool, document);
     res.set('Content-Disposition', `inline; filename="drop-zone-${document.id}.pdf"`).type('application/pdf').send(pdf);
+  });
+  router.get('/documents/:id/preview.svg', async (req, res) => {
+    const document = await getDocument(pool, z.string().uuid().parse(req.params.id));
+    if (!document) return res.status(404).json({ error: 'Documento no encontrado.' });
+    res.set('Content-Disposition', `inline; filename="drop-zone-${document.id}-preview.svg"`).type('image/svg+xml').send(buildCommercialSvg(document));
+  });
+  router.post('/documents/:id/ai-review', async (req, res) => {
+    const document = await getDocument(pool, z.string().uuid().parse(req.params.id));
+    if (!document) return res.status(404).json({ error: 'Documento no encontrado.' });
+    const payload = { documentId: document.id, kind: document.document_kind, status: document.document_status, fiscalStatus: document.fiscal_status, customer: { name: document.customerSnapshot?.name || null }, items: document.itemsSnapshot.map((item) => ({ name: item.name, quantity: item.quantity, unitPrice: item.unit_price_crc })), totals: { subtotal: document.subtotal_crc, discount: document.discount_crc, tax: document.tax_crc, total: document.total_crc, currency: 'CRC' } };
+    try {
+      const suggestion = await reviewInvoiceWithGemini(payload);
+      await pool.execute('INSERT INTO billing_document_events(document_id,actor_id,event_type,event_details) VALUES (?,?,?,?)', [document.id, req.admin.id, 'ai_review_requested', JSON.stringify({ configured: Boolean(suggestion), model: geminiStatus().model })]);
+      res.json({ configured: Boolean(suggestion), suggestion: suggestion?.data || null, model: geminiStatus().model, requiresHumanReview: true });
+    } catch (error) {
+      res.status(502).json({ error: 'La revisión de IA no pudo completarse.', detail: error.message, configured: geminiStatus().configured });
+    }
   });
   router.post('/documents/:id/deliver', async (req, res) => {
     const id = z.string().uuid().parse(req.params.id);
