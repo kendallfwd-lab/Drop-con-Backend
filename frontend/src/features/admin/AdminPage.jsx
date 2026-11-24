@@ -16,13 +16,27 @@ const DEMO_ACCOUNT = import.meta.env.DEV ? {
   password: 'DropZoneDemo2026!',
 } : null;
 
+function readCookie(name) {
+  return document.cookie.split('; ').find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
+}
+
 async function api(path, method = 'GET', body) {
+  const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+  let csrfToken = mutating ? readCookie('dz_csrf') : undefined;
+  if (mutating && !csrfToken) {
+    const csrfResponse = await fetch('/api/admin/csrf', { credentials: 'same-origin' });
+    const csrfData = await csrfResponse.json().catch(() => null);
+    if (!csrfResponse.ok || !csrfData?.csrfToken) throw new Error('No se pudo preparar la protección CSRF.');
+    csrfToken = csrfData.csrfToken;
+  }
+  const headers = {
+    ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+  };
   const response = await fetch(`/api/admin${path}`, {
     method,
-    ...(body === undefined ? {} : {
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
+    ...(Object.keys(headers).length ? { headers } : {}),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (response.status === 204) return undefined;
   const data = await response.json().catch(() => null);

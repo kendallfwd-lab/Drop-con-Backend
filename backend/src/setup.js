@@ -71,8 +71,8 @@ async function migrate() {
 async function createAdmin() {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
-  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password || password.length < 14 || password.length > 128) {
-    throw new Error('Definí ADMIN_EMAIL y ADMIN_PASSWORD (de 14 a 128 caracteres).');
+  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password || password.length < 15 || password.length > 128) {
+    throw new Error('Definí ADMIN_EMAIL y ADMIN_PASSWORD (de 15 a 128 caracteres).');
   }
   await transaction(pool, async (connection) => {
     const [user] = await connection.execute('INSERT INTO admins (email, password_hash) VALUES (?, ?)', [email, await hashPassword(password)]);

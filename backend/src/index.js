@@ -31,9 +31,22 @@ const app = express();
 app.disable('x-powered-by');
 if (process.env.TRUST_PROXY_HOPS) app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS));
 app.use(helmet({
-  contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'blob:'] } },
+  contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'blob:'], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"], 'object-src': ["'none'"] } },
   strictTransportSecurity: production ? undefined : false,
 }));
+app.use('/api', (req, res, next) => {
+  const requestOrigin = req.get('Origin');
+  res.set('Vary', 'Origin');
+  if (requestOrigin && !isAllowedAdminOrigin(requestOrigin)) return res.status(403).json({ error: 'Origen de la solicitud no autorizado.' });
+  if (requestOrigin) {
+    res.set('Access-Control-Allow-Origin', requestOrigin);
+    res.set('Access-Control-Allow-Credentials', 'true');
+    res.set('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 app.use('/api', express.json({ limit: '16kb' }));
 app.use('/api/admin', adminRoutes(pool, { production, origin: origin.origin, allowedOrigins: allowedAdminOrigins, isAllowedOrigin: isAllowedAdminOrigin }));
 app.use('/api/public/documents', publicDocumentRoutes(pool));
@@ -60,7 +73,10 @@ app.get('/api/drive/oauth/callback', async (req, res) => {
 app.get('/api/products', async (req, res) => res.set('Cache-Control', 'no-store').json(await catalog(pool)));
 app.get('/api/settings', (req, res) => res.json(legacyData.settings));
 app.get('/api/siteSections', (req, res) => res.json(legacyData.siteSections));
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', (req, res, next) => {
+  if (!req.get('Origin') || !isAllowedAdminOrigin(req.get('Origin'))) return res.status(403).json({ error: 'Origen de la solicitud no autorizado.' });
+  next();
+}, async (req, res) => {
   const body = z.object({
     customerName: z.string().trim().min(1).max(180),
     phone: z.string().trim().min(8).max(30),

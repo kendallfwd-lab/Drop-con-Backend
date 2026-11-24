@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { staffRoutes, requireAdmin } from './staff.js';
 import { Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -11,6 +11,7 @@ import { operationsRoutes } from './operations.js';
 
 const sessionAge = 8 * 60 * 60 * 1000;
 const cookieName = 'dz_admin';
+const csrfCookieName = 'dz_csrf';
 const slug = z.string().max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const amount = z.number().int().min(0).max(1_000_000_000);
 const productSchema = z.object({
@@ -47,15 +48,36 @@ function readToken(req) {
   return req.headers.cookie?.match(/(?:^|;\s*)dz_admin=([a-f0-9]{64})(?:;|$)/)?.[1];
 }
 
+function readCsrfToken(req) {
+  return req.headers.cookie?.match(/(?:^|;\s*)dz_csrf=([a-f0-9]{64})(?:;|$)/)?.[1];
+}
+
 export function adminRoutes(pool, { production, origin, allowedOrigins = new Set([origin]), isAllowedOrigin = (requestOrigin) => allowedOrigins.has(requestOrigin) }) {
   const router = Router();
   const cookie = { httpOnly: true, secure: production, sameSite: 'strict', path: '/api/admin' };
+  const csrfCookie = { httpOnly: false, secure: production, sameSite: 'strict', path: '/api/admin' };
   const dummyHash = hashPassword(randomBytes(24).toString('hex'));
 
   router.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !isAllowedOrigin(req.get('Origin'))) {
       return res.status(403).json({ error: 'Origen de la solicitud no autorizado.' });
+    }
+    next();
+  });
+
+  router.get('/csrf', (req, res) => {
+    const token = readCsrfToken(req) || randomBytes(32).toString('hex');
+    res.cookie(csrfCookieName, token, { ...csrfCookie, maxAge: sessionAge });
+    res.json({ csrfToken: token });
+  });
+
+  router.use((req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const cookieToken = readCsrfToken(req);
+    const headerToken = req.get('X-CSRF-Token');
+    if (!cookieToken || !headerToken || cookieToken.length !== headerToken.length || !timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken))) {
+      return res.status(403).json({ error: 'Token CSRF invÃ¡lido o ausente.' });
     }
     next();
   });
