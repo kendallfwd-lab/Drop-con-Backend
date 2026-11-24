@@ -10,6 +10,12 @@ const orders = [
   { id: '44444444-4444-4444-8444-444444444444', customer: ['Demo Diego Vargas', '+506 8888-1104', 'demo.diego@dropzone.local'], status: 'Pendiente', amount: 89900, paid: 0, daysAgo: 12, item: 3 },
   { id: '55555555-5555-4555-8555-555555555555', customer: ['Demo Sofía Rojas', '+506 8888-1105', 'demo.sofia@dropzone.local'], status: 'Pagado', amount: 145000, paid: 145000, daysAgo: 18, item: 4 },
   { id: '66666666-6666-4666-8666-666666666666', customer: ['Demo Laura Castro', '+506 8888-1106', 'demo.laura@dropzone.local'], status: 'Entregado', amount: 210000, paid: 210000, daysAgo: 24, item: 0 },
+  { id: '88888888-8888-4888-8888-888888888888', customer: ['Demo MarÃ­a LÃ³pez', '+506 8888-1101', 'demo.maria@dropzone.local'], status: 'Entregado', amount: 78000, paid: 78000, daysAgo: 1, item: 1 },
+  { id: '99999999-9999-4999-8999-999999999999', customer: ['Demo Carlos Rojas', '+506 8888-1102', 'demo.carlos@dropzone.local'], status: 'Preparacion', amount: 112000, paid: 112000, daysAgo: 3, item: 2 },
+  { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', customer: ['Demo Andrea Mora', '+506 8888-1103', 'demo.andrea@dropzone.local'], status: 'Despachado', amount: 97000, paid: 97000, daysAgo: 6, item: 3 },
+  { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', customer: ['Demo Felipe SolÃ­s', '+506 8888-1107', 'demo.felipe@dropzone.local'], status: 'Pendiente', amount: 56000, paid: 0, daysAgo: 9, item: 4 },
+  { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', customer: ['Demo Valeria Torres', '+506 8888-1108', 'demo.valeria@dropzone.local'], status: 'Pagado', amount: 189000, paid: 189000, daysAgo: 14, item: 0 },
+  { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', customer: ['Demo Diego Vargas', '+506 8888-1104', 'demo.diego@dropzone.local'], status: 'Preparacion', amount: 73500, paid: 0, daysAgo: 28, item: 1 },
 ];
 
 async function seed() {
