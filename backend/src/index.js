@@ -57,7 +57,9 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/drive/oauth/callback', async (req, res) => {
   try {
     if (!consumeOAuthState(String(req.query.state || ''))) return res.status(400).send('Estado OAuth inválido o vencido.');
-    await saveDriveCallback(pool, String(req.query.code || ''));
+    const state = consumeOAuthState(String(req.query.state || ''));
+    if (!state) return res.status(400).send('Estado OAuth inválido o vencido.');
+    await saveDriveCallback(pool, String(req.query.code || ''), state.verifier);
     res.send('Google Drive autorizado. Ya podés cerrar esta ventana.');
   } catch (error) {
     console.error('Drive OAuth error', JSON.stringify({

@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 
-const model = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const model = () => process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 const timeoutMs = 30_000;
 let client;
 

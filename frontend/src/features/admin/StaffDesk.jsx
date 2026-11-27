@@ -55,6 +55,12 @@ const DEMO_TRASH = [
   { id: 'trash-3', type: 'Cliente', name: 'Registro duplicado', detail: 'cliente-demo@dropzone.local', date: '19 nov 2026' },
 ];
 
+function assistantText(text) {
+  return String(text || '').split(/(\*\*[^*]+\*\*)/g).map((part, index) => part.startsWith('**') && part.endsWith('**')
+    ? <strong key={index}>{part.slice(2, -2)}</strong>
+    : <span key={index}>{part}</span>);
+}
+
 export default function StaffDesk({
   session,
   api,
@@ -65,7 +71,7 @@ export default function StaffDesk({
   const admin = session.role === 'admin';
   const location = useLocation();
   const navigate = useNavigate();
-  const [tab, setTab] = useState(admin && location.pathname.endsWith('/facturacion') ? 'billing' : (admin ? 'summary' : 'crm'));
+  const [tab, setTab] = useState(admin && location.pathname.endsWith('/facturacion') ? 'billing' : (admin ? 'chat' : 'crm'));
   const [data, setData] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [dashboardFilters, setDashboardFilters] = useState({ period: '30d', channel: 'all' });
@@ -74,6 +80,7 @@ export default function StaffDesk({
   const [events, setEvents] = useState([]);
   const [drive, setDrive] = useState(null);
   const [chat, setChat] = useState([]);
+  const [chatQuestion, setChatQuestion] = useState('');
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [promotions, setPromotions] = useState([]);
@@ -199,10 +206,10 @@ export default function StaffDesk({
           <button type="button" className="dz-admin__sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Cerrar navegación"><X size={18} /></button>
         </div>
         {[
-          ['GENERAL', ['summary','crm','operations']],
+          ['GENERAL', ['chat','summary','crm','operations']],
           ['OPERACIONES', ['catalog','inventory','customers','suppliers','warranties']],
           ['NEGOCIO', ['promotions','billing','finance','advanced']],
-          ['ADMINISTRACIÓN', ['chat','policies','users','trash']],
+          ['ADMINISTRACIÓN', ['policies','users','trash']],
         ].map(([group, keys]) => (
           <div className="dz-admin__nav-group" key={group}>
             <span>{group}</span>
@@ -237,9 +244,9 @@ export default function StaffDesk({
           </div>
         </header>
         <main className="dz-admin__workspace">
-      <div className="dz-admin__page-heading">
+      <div className={`dz-admin__page-heading ${tab === 'summary' ? 'dz-admin__page-heading--hero' : ''}`}>
         <div><span>Panel administrativo</span><h1>{tabs[tab]?.[0] || 'Resumen general'}</h1></div>
-        {tab === 'summary' && <button type="button" className="dz-admin__primary" onClick={() => setTab('catalog')}>Nuevo producto</button>}
+        {tab === 'summary' && <div className="dz-admin__heading-actions"><span className="dz-admin__live-status"><i /> Datos actualizados</span><button type="button" className="dz-admin__primary" onClick={() => setTab('catalog')}>Nuevo producto</button></div>}
       </div>
       <p className="dz-admin__demo-banner"><span>DEMO</span> Datos de demostración visibles para explorar el panel. Los registros reales conservan prioridad.</p>
       {message && <p role="status">{message}</p>}
@@ -251,7 +258,8 @@ export default function StaffDesk({
       {tab === 'catalog' && admin && children}
       {tab === 'inventory' && admin && children}
       {tab === 'summary' && data && (
-        <section className="dz-admin__card">
+        <section className="dz-admin__card dz-admin__dashboard-card">
+          <div className="dz-admin__dashboard-intro"><div><span>Resumen ejecutivo</span><h2>Tu negocio, en una sola vista</h2><p>Monitorea ventas, operación e inventario con información conectada a MySQL.</p></div><div className="dz-admin__dashboard-mark">DZ<span>CR</span></div></div>
           <div className="dz-admin__dashboard-controls">
             <div><span>Vista ejecutiva</span><strong>Rendimiento del negocio</strong></div>
             <label>Periodo<select value={dashboardFilters.period} onChange={(event) => setDashboardFilters((current) => ({ ...current, period: event.target.value }))}>
@@ -590,27 +598,52 @@ export default function StaffDesk({
         </section>
       )}
       {tab === 'chat' && (
-        <section className="dz-admin__card">
-          <h2>Asistente de Drop Zone</h2>
-          <p>
-            Consultá procedimientos, productos o existencias. Incluí el SKU si
-            necesitás una variante exacta.
-          </p>
+        <section className="dz-admin__card dz-admin__ai-panel">
+          <div className="dz-admin__ai-hero">
+            <div className="dz-admin__ai-orb"><Bot size={30} /></div>
+            <div>
+              <span className="dz-admin__ai-kicker">Inteligencia operativa</span>
+              <h2>Asistente de Drop Zone</h2>
+              <p>Consulta inventario, ventas, procedimientos y documentos internos con respuestas basadas en las fuentes autorizadas.</p>
+            </div>
+            <span className={`dz-admin__ai-status ${data?.gemini?.configured ? '' : 'is-offline'}`}><i /> {data ? (data.gemini?.configured ? 'Gemini conectado' : 'Fuentes locales activas') : 'Verificando conexión'}</span>
+          </div>
+          <div className="dz-admin__ai-toolbar">
+            <span><strong>Conversación segura</strong> · tus consultas se responden con información autorizada</span>
+            {!!chat.length && <button type="button" onClick={() => setChat([])} disabled={busy}>Limpiar conversación</button>}
+          </div>
+          <div className="dz-admin__ai-metrics">
+            <div><strong>MySQL</strong><span>Datos del negocio</span></div>
+            <div><strong>Drive RAG</strong><span>Documentos indexados</span></div>
+            <div><strong>Seguro</strong><span>Acceso según rol</span></div>
+          </div>
+          <div className="dz-admin__ai-suggestions">
+            <span>Consultas rápidas</span>
+            {['¿Qué productos tienen stock bajo?', 'Resume las ventas de los últimos 30 días', '¿Qué pedidos requieren preparación?'].map((suggestion) => (
+              <button type="button" key={suggestion} onClick={() => setChatQuestion(suggestion)} disabled={busy}>{suggestion}</button>
+            ))}
+          </div>
+          <div className="dz-admin__ai-conversation" aria-live="polite">
+          {!chat.length && <div className="dz-admin__ai-empty"><Bot size={24} /><strong>¿En qué puedo ayudarte?</strong><p>Pregúntame por productos, stock, pedidos, ventas, procedimientos o cualquier documento indexado en Drive.</p></div>}
           {chat.map((turn, i) => (
-            <article key={i}>
-              <strong>{turn.question}</strong>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{turn.reply}</p>
-              <ol>
-                {turn.sources.map((s) => (
-                  <li key={s.title}>
-                    <strong>{s.title}</strong> · {s.body}
-                  </li>
-                ))}
-              </ol>
+            <article className="dz-admin__ai-message-group" key={i}>
+              <div className="dz-admin__ai-bubble dz-admin__ai-bubble--user"><span>Tú</span><p>{turn.question}</p></div>
+              <div className="dz-admin__ai-bubble dz-admin__ai-bubble--assistant"><span><Bot size={14} /> Asistente Drop Zone</span><p style={{ whiteSpace: 'pre-wrap' }}>{assistantText(turn.reply)}</p></div>
+              <details className="dz-admin__ai-sources">
+                <summary>Fuentes consultadas ({turn.sources?.length || 0})</summary>
+                <ol>
+                  {(turn.sources || []).map((s) => (
+                    <li key={s.title}>
+                      <strong>{s.title}</strong><small>{s.body.slice(0, 220)}{s.body.length > 220 ? '…' : ''}</small>
+                    </li>
+                  ))}
+                </ol>
+              </details>
             </article>
           ))}
+          </div>
           <form
-            className="dz-admin__fields"
+            className="dz-admin__ai-composer"
             onSubmit={(e) =>
               submit(e, ({ question }, form) =>
                 act(
@@ -619,6 +652,7 @@ export default function StaffDesk({
                       question,
                     });
                     setChat((old) => [...old, { question, ...response }]);
+                    setChatQuestion('');
                     form.reset();
                   },
                   '',
@@ -627,18 +661,21 @@ export default function StaffDesk({
               )
             }
           >
-            <label className="dz-admin__wide">
-              Pregunta
+            <label>
+              <span className="dz-admin__sr-only">Escribe tu pregunta</span>
               <textarea
                 name="question"
+                value={chatQuestion}
+                onChange={(event) => setChatQuestion(event.target.value)}
                 required
                 minLength={3}
                 maxLength={800}
-                placeholder="¿Qué stock hay de AirPods Max?"
+                placeholder="Escribe una pregunta sobre tu negocio…"
+                rows="2"
               />
             </label>
-            <button disabled={busy}>
-              {busy ? 'Consultando…' : 'Consultar fuentes'}
+            <button className="dz-admin__primary" disabled={busy}>
+              {busy ? 'Escribiendo…' : 'Enviar'}
             </button>
           </form>
         </section>

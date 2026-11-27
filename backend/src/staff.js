@@ -32,7 +32,7 @@ export function staffRoutes(pool) {
     const [[inventory]] = await pool.execute(`SELECT COUNT(*) AS skus,
       COALESCE(SUM(i.quantity IS NULL),0) AS pending, COALESCE(SUM(i.quantity=0),0) AS soldOut
       FROM inventory_items i JOIN products p ON p.id=i.product_id WHERE p.active=1`);
-    res.json({ leads, products, policies, summary, inventory });
+    res.json({ leads, products, policies, summary, inventory, gemini: geminiStatus() });
   });
   r.post('/inquiries', async (req, res) => {
     const { product, channel } = z

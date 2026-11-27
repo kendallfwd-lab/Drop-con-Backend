@@ -19,24 +19,25 @@ const orders = [
 ];
 
 async function seed() {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('El seed demo está bloqueado en producción. Usa un entorno local o de pruebas.');
+  }
   await transaction(pool, async (connection) => {
     let [[admin]] = await connection.execute('SELECT id FROM admins ORDER BY id LIMIT 1');
     if (!admin) throw new Error('Crea primero un administrador con npm run admin:create.');
-    if (process.env.NODE_ENV !== 'production') {
-      const demoEmail = (process.env.DEMO_ADMIN_EMAIL || 'demo.admin@dropzone.local').trim().toLowerCase();
-      const demoPassword = process.env.DEMO_ADMIN_PASSWORD || 'DropZoneDemo2026!';
-      await connection.execute(
-        `INSERT INTO admins (email, password_hash) VALUES (?, ?)
-         ON DUPLICATE KEY UPDATE password_hash=VALUES(password_hash)`,
-        [demoEmail, await hashPassword(demoPassword)],
-      );
-      const [[demoAccount]] = await connection.execute('SELECT id FROM admins WHERE email=?', [demoEmail]);
-      await connection.execute(
-        `INSERT INTO staff_access (account_id, role, enabled) VALUES (?, 'admin', 1)
-         ON DUPLICATE KEY UPDATE role='admin', enabled=1`,
-        [demoAccount.id],
-      );
-    }
+    const demoEmail = (process.env.DEMO_ADMIN_EMAIL || 'demo.admin@dropzone.local').trim().toLowerCase();
+    const demoPassword = process.env.DEMO_ADMIN_PASSWORD || 'DropZoneDemo2026!';
+    await connection.execute(
+      `INSERT INTO admins (email, password_hash) VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE password_hash=VALUES(password_hash)`,
+      [demoEmail, await hashPassword(demoPassword)],
+    );
+    const [[demoAccount]] = await connection.execute('SELECT id FROM admins WHERE email=?', [demoEmail]);
+    await connection.execute(
+      `INSERT INTO staff_access (account_id, role, enabled) VALUES (?, 'admin', 1)
+       ON DUPLICATE KEY UPDATE role='admin', enabled=1`,
+      [demoAccount.id],
+    );
     const [products] = await connection.execute('SELECT id,name,price_crc,cost_crc FROM products ORDER BY display_order,id LIMIT 8');
     const [inventory] = await connection.execute('SELECT id,product_id,sku,label,quantity FROM inventory_items ORDER BY id LIMIT 8');
     if (products.length < 5 || inventory.length < 5) throw new Error('Se requieren al menos cinco productos e inventarios para cargar la demo.');

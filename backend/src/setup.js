@@ -50,6 +50,16 @@ async function migrate() {
         await connection.query(statement);
       }
     }
+    const advancedAuthSchema = await readFile(new URL('../database/migrations/005_advanced_auth.sql', import.meta.url), 'utf8');
+    const [advancedAuthMigration] = await connection.execute("INSERT IGNORE INTO schema_migrations (version) VALUES ('006-advanced-auth')");
+    if (advancedAuthMigration.affectedRows) {
+      for (const statement of advancedAuthSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) await connection.query(statement);
+    }
+    const resetCodesSchema = await readFile(new URL('../database/migrations/006_password_reset_codes.sql', import.meta.url), 'utf8');
+    const [resetCodesMigration] = await connection.execute("INSERT IGNORE INTO schema_migrations (version) VALUES ('007-password-reset-codes')");
+    if (resetCodesMigration.affectedRows) {
+      for (const statement of resetCodesSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) await connection.query(statement);
+    }
     const [migration] = await connection.execute(
       "INSERT IGNORE INTO schema_migrations (version) VALUES ('001-catalogo-inicial')",
     );
