@@ -8,9 +8,22 @@ import { adminRoutes } from './admin.js';
 import { catalog, legacyData } from './catalog.js';
 import { calculateOrderTotals } from './pricing.js';
 import { consumeOAuthState, saveDriveCallback } from './drive.js';
+import { publicDocumentRoutes } from './billing.js';
 
 const production = process.env.NODE_ENV === 'production';
 const origin = new URL(process.env.APP_ORIGIN || 'http://127.0.0.1:5173');
+const allowedAdminOrigins = new Set([origin.origin]);
+const isAllowedAdminOrigin = (requestOrigin) => {
+  if (allowedAdminOrigins.has(requestOrigin)) return true;
+  if (production || !requestOrigin) return false;
+  try {
+    const candidate = new URL(requestOrigin);
+    return candidate.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(candidate.hostname)
+      && ['127.0.0.1', 'localhost'].includes(origin.hostname);
+  } catch {
+    return false;
+  }
+};
 if (production && origin.protocol !== 'https:') throw new Error('APP_ORIGIN debe usar HTTPS en producción.');
 
 const pool = createPool();
@@ -18,11 +31,25 @@ const app = express();
 app.disable('x-powered-by');
 if (process.env.TRUST_PROXY_HOPS) app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS));
 app.use(helmet({
-  contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'blob:'] } },
+  contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'blob:'], 'form-action': ["'self'"], 'frame-ancestors': ["'none'"], 'object-src': ["'none'"] } },
   strictTransportSecurity: production ? undefined : false,
 }));
+app.use('/api', (req, res, next) => {
+  const requestOrigin = req.get('Origin');
+  res.set('Vary', 'Origin');
+  if (requestOrigin && !isAllowedAdminOrigin(requestOrigin)) return res.status(403).json({ error: 'Origen de la solicitud no autorizado.' });
+  if (requestOrigin) {
+    res.set('Access-Control-Allow-Origin', requestOrigin);
+    res.set('Access-Control-Allow-Credentials', 'true');
+    res.set('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 app.use('/api', express.json({ limit: '16kb' }));
-app.use('/api/admin', adminRoutes(pool, { production, origin: origin.origin }));
+app.use('/api/admin', adminRoutes(pool, { production, origin: origin.origin, allowedOrigins: allowedAdminOrigins, isAllowedOrigin: isAllowedAdminOrigin }));
+app.use('/api/public/documents', publicDocumentRoutes(pool));
 app.get('/api/health', async (req, res) => {
   await pool.query('SELECT 1');
   res.json({ status: 'ok' });
@@ -30,7 +57,9 @@ app.get('/api/health', async (req, res) => {
 app.get('/api/drive/oauth/callback', async (req, res) => {
   try {
     if (!consumeOAuthState(String(req.query.state || ''))) return res.status(400).send('Estado OAuth inválido o vencido.');
-    await saveDriveCallback(pool, String(req.query.code || ''));
+    const state = consumeOAuthState(String(req.query.state || ''));
+    if (!state) return res.status(400).send('Estado OAuth inválido o vencido.');
+    await saveDriveCallback(pool, String(req.query.code || ''), state.verifier);
     res.send('Google Drive autorizado. Ya podés cerrar esta ventana.');
   } catch (error) {
     console.error('Drive OAuth error', JSON.stringify({
@@ -46,7 +75,10 @@ app.get('/api/drive/oauth/callback', async (req, res) => {
 app.get('/api/products', async (req, res) => res.set('Cache-Control', 'no-store').json(await catalog(pool)));
 app.get('/api/settings', (req, res) => res.json(legacyData.settings));
 app.get('/api/siteSections', (req, res) => res.json(legacyData.siteSections));
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', (req, res, next) => {
+  if (!req.get('Origin') || !isAllowedAdminOrigin(req.get('Origin'))) return res.status(403).json({ error: 'Origen de la solicitud no autorizado.' });
+  next();
+}, async (req, res) => {
   const body = z.object({
     customerName: z.string().trim().min(1).max(180),
     phone: z.string().trim().min(8).max(30),
@@ -75,7 +107,7 @@ app.post('/api/orders', async (req, res) => {
     const checkedItems = [];
     for (const item of body.items) {
       const [[product]] = await connection.execute(
-          'SELECT id,name,category,price_crc,presentation FROM products WHERE id=? AND active=TRUE',
+          'SELECT id,name,category,price_crc,cost_crc,presentation FROM products WHERE id=? AND active=TRUE',
         [item.productId],
       );
       if (!product) return { error: `Producto no disponible: ${item.productId}` };
@@ -99,10 +131,15 @@ app.post('/api/orders', async (req, res) => {
         const variant = variants.find((entry) => entry.name === item.variantLabel);
         if (variant?.priceCRC != null) unitPrice = Number(variant.priceCRC);
       }
-      checkedItems.push({ ...item, inventory, name: product.name, category: product.category, unitPrice, cost: 0 });
+      checkedItems.push({ ...item, inventory, name: product.name, category: product.category, unitPrice, cost: Number(product.cost_crc) });
     }
 
-    const totals = calculateOrderTotals(checkedItems);
+    const [promotions] = await connection.execute(
+      `SELECT product_id, discount_crc, minimum_quantity, active FROM promotions
+       WHERE active=TRUE AND (starts_at IS NULL OR starts_at <= UTC_TIMESTAMP())
+       AND (ends_at IS NULL OR ends_at >= UTC_TIMESTAMP())`,
+    );
+    const totals = calculateOrderTotals(checkedItems, promotions);
     await connection.execute(
       `INSERT INTO orders(id,customer_id,customer_name,phone,channel,status,subtotal_crc,discount_crc,total_crc,idempotency_key,notes)
        VALUES (?,?,?,?,?, 'Pendiente',?,?,?, ?,?)`,

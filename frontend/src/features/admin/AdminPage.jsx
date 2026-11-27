@@ -7,22 +7,39 @@ import StaffDesk from './StaffDesk.jsx';
 import './admin.css';
 
 const blank = {
-  id: '', name: '', category: '', priceCRC: 0, image: '', shortDescription: '',
+  id: '', name: '', category: '', priceCRC: 0, costCRC: 0, image: '', shortDescription: '',
   availability: 'Consultar', featured: false, active: false, displayOrder: 0,
 };
 
-const DEMO_ACCOUNT = {
+const DEMO_ACCOUNT = import.meta.env.DEV ? {
   email: 'demo.admin@dropzone.local',
   password: 'DropZoneDemo2026!',
-};
+} : null;
+
+function readCookie(name) {
+  return document.cookie.split('; ').find((part) => part.startsWith(`${name}=`))?.slice(name.length + 1);
+}
+
+const API_BASE = import.meta.env.DEV ? 'http://127.0.0.1:3001' : '';
 
 async function api(path, method = 'GET', body) {
-  const response = await fetch(`/api/admin${path}`, {
+  const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+  let csrfToken = mutating ? readCookie('dz_csrf') : undefined;
+  if (mutating && !csrfToken) {
+    const csrfResponse = await fetch(`${API_BASE}/api/admin/csrf`, { credentials: 'include' });
+    const csrfData = await csrfResponse.json().catch(() => null);
+    if (!csrfResponse.ok || !csrfData?.csrfToken) throw new Error('No se pudo preparar la protección CSRF.');
+    csrfToken = csrfData.csrfToken;
+  }
+  const headers = {
+    ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+  };
+  const response = await fetch(`${API_BASE}/api/admin${path}`, {
     method,
-    ...(body === undefined ? {} : {
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
+    credentials: 'include',
+    ...(Object.keys(headers).length ? { headers } : {}),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (response.status === 204) return undefined;
   const data = await response.json().catch(() => null);
@@ -37,6 +54,11 @@ export default function AdminPage() {
   const [session, setSession] = useState(undefined);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryCodeSent, setRecoveryCodeSent] = useState(false);
+  const [recoveryNotice, setRecoveryNotice] = useState('');
+  const [totpSetup, setTotpSetup] = useState(null);
 
   useEffect(() => {
     let current = true;
@@ -53,10 +75,33 @@ export default function AdminPage() {
     const body = Object.fromEntries(new FormData(event.currentTarget));
     setBusy(true);
     setError('');
-    try { setSession(await api('/login', 'POST', body)); }
+    try {
+      const result = await api('/login', 'POST', body);
+      if (result?.mfaRequired) { setMfaRequired(true); return; }
+      setSession(result);
+    }
     catch (failure) { setError(failure.message); }
     finally { setBusy(false); }
   }
+
+  async function submitMfa(event) { event.preventDefault(); setBusy(true); setError(''); try { setSession(await api('/login/mfa', 'POST', Object.fromEntries(new FormData(event.currentTarget)))); } catch (failure) { setError(failure.message); } finally { setBusy(false); } }
+  async function requestRecoveryCode(event) {
+    event.preventDefault(); setBusy(true); setError(''); setRecoveryNotice('');
+    try {
+      const result = await api('/password-reset/email-code/request', 'POST', Object.fromEntries(new FormData(event.currentTarget)));
+      setRecoveryCodeSent(true);
+      setRecoveryNotice('Revisa tu correo e ingresa el codigo de seis digitos. Vence en 10 minutos.');
+    } catch (failure) { setError(failure.message); } finally { setBusy(false); }
+  }
+  async function confirmRecoveryCode(event) {
+    event.preventDefault(); setBusy(true); setError('');
+    try {
+      await api('/password-reset/email-code/confirm', 'POST', Object.fromEntries(new FormData(event.currentTarget)));
+      setRecoveryMode(false); setRecoveryCodeSent(false); setRecoveryNotice('Contrasena actualizada. Ya puedes iniciar sesion.');
+    } catch (failure) { setError(failure.message); } finally { setBusy(false); }
+  }
+  async function beginTotpSetup() { setBusy(true); setError(''); try { setTotpSetup(await api('/security/totp/enroll', 'POST', {})); } catch (failure) { setError(failure.message); } finally { setBusy(false); } }
+  async function confirmTotpSetup(event) { event.preventDefault(); setBusy(true); setError(''); try { await api('/security/totp/verify', 'POST', Object.fromEntries(new FormData(event.currentTarget))); setTotpSetup({ complete: true }); } catch (failure) { setError(failure.message); } finally { setBusy(false); } }
 
   function fillDemoAccount(event) {
     const form = event.currentTarget.form;
@@ -87,26 +132,54 @@ export default function AdminPage() {
     {session && <header className="dz-admin__top">
       <Brand />
       <Link to="/">Ver tienda</Link>
+      <button type="button" onClick={beginTotpSetup} disabled={busy}>Google Authenticator</button>
       <button type="button" onClick={signOut} disabled={busy}>Cerrar sesión</button>
     </header>}
     {error && <p className="dz-admin__error" role="alert">{error}</p>}
     {session === undefined && <p role="status">Verificando sesión…</p>}
-    {session === null && <form className="dz-admin__login" onSubmit={authenticate} aria-describedby="admin-login-help">
+    {session === null && <div className="dz-admin__login-layout">
+      <section className="dz-admin__login-aside" aria-label="Información de DROP ZONE CR">
+        <Brand />
+        <span className="dz-admin__login-aside-kicker">DROP ZONE CR</span>
+        <h1>Administra tu tienda con claridad.</h1>
+        <p>Productos, pedidos, inventario y clientes en un solo lugar para que tu equipo avance más rápido.</p>
+        <div className="dz-admin__login-aside-points"><span>●</span> Datos conectados a MySQL</div>
+        <div className="dz-admin__login-aside-points"><span>●</span> Acceso protegido para tu equipo</div>
+      </section>
+      <form className="dz-admin__login" onSubmit={recoveryMode ? (recoveryCodeSent ? confirmRecoveryCode : requestRecoveryCode) : mfaRequired ? submitMfa : authenticate} aria-describedby="admin-login-help">
       <div className="dz-admin__login-brand"><Brand /><span className="dz-admin__login-badge">ADMIN</span></div>
-      <h1>Acceso del equipo de {settings.brand}</h1>
+      <h1>{recoveryMode ? 'Recuperar acceso' : mfaRequired ? 'Verificación en dos pasos' : `Acceso del equipo de ${settings.brand}`}</h1>
       <p id="admin-login-help" className="dz-admin__login-help">Ingresa para administrar productos, pedidos e inventario de {settings.brand}.</p>
+      {recoveryNotice && <p className="dz-admin__login-notice" role="status">{recoveryNotice}</p>}
+      <fieldset className={(mfaRequired || recoveryMode) ? 'dz-admin__login-fields is-hidden' : 'dz-admin__login-fields'} disabled={mfaRequired || recoveryMode}>
       <label>Correo electrónico<input autoComplete="username" name="email" type="email" maxLength={254} required /></label>
       <label>Contraseña<input autoComplete="current-password" name="password" type="password" maxLength={128} required /></label>
-      <div className="dz-admin__demo-login">
+      </fieldset>
+      {mfaRequired && <label>Código de autenticación<input autoComplete="one-time-code" name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label>}
+      {recoveryMode && <>
+        <label>Correo electrónico<input autoComplete="email" name="email" type="email" maxLength={254} required /></label>
+        {recoveryCodeSent && <>
+          <label>Código enviado al correo<input autoComplete="one-time-code" name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label>
+          <label>Nueva contraseña<input autoComplete="new-password" name="password" type="password" minLength={15} maxLength={128} required /></label>
+        </>}
+      </>}
+      {!mfaRequired && !recoveryMode && <button type="button" className="dz-admin__text-button" onClick={() => { setRecoveryMode(true); setRecoveryCodeSent(false); setRecoveryNotice(''); }}>¿Olvidaste tu contraseña?</button>}
+      {!mfaRequired && !recoveryMode && DEMO_ACCOUNT && <div className="dz-admin__demo-login">
         <div><strong>Usuario demo</strong><span>Solo para desarrollo local</span></div>
         <code>{DEMO_ACCOUNT.email}</code>
         <code>{DEMO_ACCOUNT.password}</code>
         <button type="button" onClick={fillDemoAccount}>Usar usuario demo</button>
-      </div>
-      <button className="dz-admin__primary dz-admin__login-submit" disabled={busy}>{busy ? 'Ingresando…' : 'Iniciar sesión'}</button>
+      </div>}
+      <button className="dz-admin__primary dz-admin__login-submit" disabled={busy}>{busy ? 'Procesando…' : recoveryMode ? (recoveryCodeSent ? 'Cambiar contraseña' : 'Enviar código al correo') : 'Iniciar sesión'}</button>
       <p className="dz-admin__login-footnote"><span aria-hidden="true">●</span> Acceso protegido para el equipo autorizado</p>
       <Link className="dz-admin__back-link" to="/">← Volver a la tienda</Link>
-    </form>}
+      </form>
+    </div>}
+    {session && totpSetup && <section className="dz-admin__totp-setup" role="dialog" aria-modal="true" aria-label="Configurar Google Authenticator">
+      <h2>{totpSetup.complete ? 'Authenticator activado' : 'Configurar Google Authenticator'}</h2>
+      {totpSetup.complete ? <p>Tu cuenta ya puede usar el código de Google Authenticator como verificación adicional al iniciar sesión.</p> : <><p>En Google Authenticator agregá una cuenta y elegí “Ingresar clave de configuración”. Copiá esta clave:</p><code>{totpSetup.secret}</code><form onSubmit={confirmTotpSetup}><label>Código de seis dígitos<input name="code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required /></label><button className="dz-admin__primary" disabled={busy}>Confirmar y activar</button></form></>}
+      <button type="button" onClick={() => setTotpSetup(null)} disabled={busy}>Cerrar</button>
+    </section>}
     {session && <StaffDesk session={session} api={api} reportError={handleError} clearError={() => setError('')}>
       <Dashboard brand={settings.brand} email={session.email} reportError={handleError} clearError={() => setError('')} />
     </StaffDesk>}
@@ -123,9 +196,12 @@ function Dashboard({ brand, email, reportError, clearError }) {
   const [busy, setBusy] = useState(false);
 
   async function refresh() {
-    const [nextProducts, nextInventory] = await Promise.all([api('/products'), api('/inventory')]);
-    setProducts(nextProducts);
-    setInventory(nextInventory);
+    const results = await Promise.allSettled([api('/products'), api('/inventory')]);
+    const [productsResult, inventoryResult] = results;
+    if (productsResult.status === 'fulfilled') setProducts(productsResult.value);
+    if (inventoryResult.status === 'fulfilled') setInventory(inventoryResult.value);
+    const failed = results.find((result) => result.status === 'rejected');
+    if (failed && results.every((result) => result.status === 'rejected')) throw failed.reason;
   }
 
   useEffect(() => { refresh().catch(reportError); }, []); // Run once for this authenticated dashboard.
@@ -222,6 +298,7 @@ function ProductForm({ product, creating, busy, onClose, save, savePrices }) {
     save({
       ...Object.fromEntries(form),
       priceCRC: Number(form.get('priceCRC')),
+      costCRC: Number(form.get('costCRC')),
       displayOrder: Number(form.get('displayOrder')),
       featured: form.has('featured'),
       active: form.has('active'),
@@ -235,6 +312,7 @@ function ProductForm({ product, creating, busy, onClose, save, savePrices }) {
       <label>Nombre<input name="name" defaultValue={product.name} maxLength={180} required /></label>
       <label>Categoría<input name="category" defaultValue={product.category} maxLength={80} required /></label>
       <label>Precio base en colones<input type="number" name="priceCRC" min="0" max="1000000000" defaultValue={product.priceCRC} required /></label>
+      <label>Costo de adquisición<input type="number" name="costCRC" min="0" max="1000000000" defaultValue={product.costCRC ?? 0} required /></label>
       <label>Imagen del sitio<input name="image" defaultValue={product.image} placeholder="/images/products/ejemplo.webp" maxLength={500} required /></label>
       <label>Estado visible de disponibilidad<input name="availability" defaultValue={product.availability} maxLength={100} required /></label>
       <label>Orden<input type="number" name="displayOrder" min="0" max="1000000000" defaultValue={product.displayOrder} required /></label>

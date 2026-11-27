@@ -17,6 +17,49 @@ async function migrate() {
     if (accessMigration.affectedRows) {
       await connection.execute("INSERT INTO staff_access (account_id, role) SELECT id, 'admin' FROM admins");
     }
+    const [costMigration] = await connection.execute(
+      "INSERT IGNORE INTO schema_migrations (version) VALUES ('002-product-cost')",
+    );
+    if (costMigration.affectedRows) {
+      await connection.execute('ALTER TABLE products ADD COLUMN cost_crc INT UNSIGNED NOT NULL DEFAULT 0 AFTER price_crc');
+    }
+    const billingSchema = await readFile(new URL('../database/migrations/002_billing.sql', import.meta.url), 'utf8');
+    const [billingMigration] = await connection.execute(
+      "INSERT IGNORE INTO schema_migrations (version) VALUES ('003-billing-documents')",
+    );
+    if (billingMigration.affectedRows) {
+      for (const statement of billingSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) {
+        await connection.query(statement);
+      }
+    }
+    const operationsSchema = await readFile(new URL('../database/migrations/003_admin_operations.sql', import.meta.url), 'utf8');
+    const [operationsMigration] = await connection.execute(
+      "INSERT IGNORE INTO schema_migrations (version) VALUES ('004-admin-operations')",
+    );
+    if (operationsMigration.affectedRows) {
+      for (const statement of operationsSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) {
+        await connection.query(statement);
+      }
+    }
+    const businessSchema = await readFile(new URL('../database/migrations/004_business_operations.sql', import.meta.url), 'utf8');
+    const [businessMigration] = await connection.execute(
+      "INSERT IGNORE INTO schema_migrations (version) VALUES ('005-business-operations')",
+    );
+    if (businessMigration.affectedRows) {
+      for (const statement of businessSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) {
+        await connection.query(statement);
+      }
+    }
+    const advancedAuthSchema = await readFile(new URL('../database/migrations/005_advanced_auth.sql', import.meta.url), 'utf8');
+    const [advancedAuthMigration] = await connection.execute("INSERT IGNORE INTO schema_migrations (version) VALUES ('006-advanced-auth')");
+    if (advancedAuthMigration.affectedRows) {
+      for (const statement of advancedAuthSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) await connection.query(statement);
+    }
+    const resetCodesSchema = await readFile(new URL('../database/migrations/006_password_reset_codes.sql', import.meta.url), 'utf8');
+    const [resetCodesMigration] = await connection.execute("INSERT IGNORE INTO schema_migrations (version) VALUES ('007-password-reset-codes')");
+    if (resetCodesMigration.affectedRows) {
+      for (const statement of resetCodesSchema.split(';').map((sql) => sql.trim()).filter(Boolean)) await connection.query(statement);
+    }
     const [migration] = await connection.execute(
       "INSERT IGNORE INTO schema_migrations (version) VALUES ('001-catalogo-inicial')",
     );
@@ -38,8 +81,8 @@ async function migrate() {
 async function createAdmin() {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
-  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password || password.length < 14 || password.length > 128) {
-    throw new Error('Definí ADMIN_EMAIL y ADMIN_PASSWORD (de 14 a 128 caracteres).');
+  if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !password || password.length < 15 || password.length > 128) {
+    throw new Error('Definí ADMIN_EMAIL y ADMIN_PASSWORD (de 15 a 128 caracteres).');
   }
   await transaction(pool, async (connection) => {
     const [user] = await connection.execute('INSERT INTO admins (email, password_hash) VALUES (?, ?)', [email, await hashPassword(password)]);

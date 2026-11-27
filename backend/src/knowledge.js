@@ -27,13 +27,20 @@ export async function retrieve(pool, user, question) {
   const [chunks] = await pool.execute(`SELECT c.id,d.title,d.source_url,d.audience,c.chunk_no,c.body FROM drive_chunks c JOIN drive_documents d ON d.id=c.document_id WHERE d.status='indexed' AND (d.audience='team' OR ?)`, [user.role === 'admin']);
   sources.push(...chunks.map((chunk) => ({ title: `${chunk.title} · fragmento ${chunk.chunk_no}`, sourceId: `drive:${chunk.id}`, type: 'drive', audience: chunk.audience, url: chunk.source_url, body: chunk.body })));
   const tokens = terms(question);
-  return sources.map((source) => {
+  const ranked = sources.map((source) => {
     const title = terms(source.title);
     const body = terms(source.body);
     const exactTitle = question.toLowerCase().includes(source.title.split(' · ').at(-1).toLowerCase());
     const score = (exactTitle ? 12 : 0) + [...tokens].reduce((sum, token) => sum + (title.has(token) ? 3 : 0) + (body.has(token) ? 1 : 0), 0);
     return { ...source, score };
-  }).filter((source) => source.score > 0).sort((a, b) => b.score - a.score).slice(0, 5);
+  }).sort((a, b) => b.score - a.score);
+  const relevant = ranked.filter((source) => source.score > 0);
+  // When the question is broad, provide a small grounded context instead of an empty RAG result.
+  // Gemini must still cite these sources and explicitly say when the evidence is insufficient.
+  return (relevant.length ? relevant : ranked).slice(0, 8).map((source) => ({
+    ...source,
+    body: source.body.slice(0, 2400),
+  }));
 }
 
 export function funnel(pool) {

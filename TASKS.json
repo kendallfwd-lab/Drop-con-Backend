@@ -1,0 +1,22 @@
+{
+  "project": "Drop Zone CR Enterprise Admin",
+  "updatedAt": "2026-11-26",
+  "priorities": {
+    "P0": "Seguridad e integridad",
+    "P1": "Operaciones comerciales",
+    "P2": "Analítica, IA y automatización"
+  },
+  "tasks": [
+    { "id": "P0-001", "priority": "P0", "title": "Probar autorización server-side de todas las mutaciones", "status": "todo", "acceptance": "roles sin permiso reciben 403 y no se modifica MySQL" },
+    { "id": "P0-002", "priority": "P0", "title": "Completar cobertura de auditoría", "status": "todo", "acceptance": "actor, entidad, acción, resultado y motivo quedan registrados sin secretos" },
+    { "id": "P0-003", "priority": "P0", "title": "Separar seeds demo de producción", "status": "done", "acceptance": "el seed demo se rechaza cuando NODE_ENV=production" },
+    { "id": "P1-001", "priority": "P1", "title": "Recepción parcial de órdenes de compra", "status": "todo", "acceptance": "no se recibe más que lo autorizado sin aprobación y el stock se actualiza en transacción" },
+    { "id": "P1-002", "priority": "P1", "title": "Transferencias atómicas entre ubicaciones", "status": "todo", "acceptance": "el saldo global se conserva y cualquier error revierte origen y destino" },
+    { "id": "P1-003", "priority": "P1", "title": "Devoluciones parciales e inspección", "status": "todo", "acceptance": "solo unidades elegibles pueden devolverse y reponer stock requiere inspección aprobada" },
+    { "id": "P1-004", "priority": "P1", "title": "CRM con consentimiento y segmentación", "status": "todo", "acceptance": "consentimientos y segmentos se persisten y se respetan por rol" },
+    { "id": "P1-005", "priority": "P1", "title": "Caja y arqueo operativo", "status": "todo", "acceptance": "apertura, movimientos, cierre y diferencia quedan auditados" },
+    { "id": "P2-001", "priority": "P2", "title": "Dashboard reconciliable por período y canal", "status": "in_progress", "acceptance": "cada KPI coincide con una consulta reproducible y enlaces al detalle" },
+    { "id": "P2-002", "priority": "P2", "title": "Agentes Gemini especializados y supervisados", "status": "todo", "acceptance": "salidas estructuradas, herramientas autorizadas, fallback y trazabilidad" },
+    { "id": "P2-003", "priority": "P2", "title": "Outbox y automatizaciones deduplicadas", "status": "todo", "acceptance": "reintentos limitados, idempotencia y cola de fallos" }
+  ]
+}

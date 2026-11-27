@@ -4,6 +4,8 @@ work/
 *.log
 .vercel
 .env*
+storage/billing/
+backend/storage/
 !.env.example
 frontend/.env*
 !frontend/.env.example

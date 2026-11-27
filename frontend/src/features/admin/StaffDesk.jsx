@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import {
   BarChart3, Bell, Bot, Boxes, ChevronLeft, CircleDollarSign, ClipboardList,
-  Megaphone, Menu, Moon, PackagePlus, ShieldCheck, Sun, Truck,
+  Megaphone, Menu, Moon, PackagePlus, Search, ShieldCheck, Sun, Trash2, Truck,
   UserRound, Users, Warehouse, X,
 } from 'lucide-react';
+import { Brand } from '../../components/common/Shared.jsx';
 
 const tabs = {
   summary: ['Resumen general', BarChart3],
@@ -16,10 +18,48 @@ const tabs = {
   warranties: ['Garantías', ShieldCheck],
   promotions: ['Promociones', Megaphone],
   finance: ['Finanzas', CircleDollarSign],
+  advanced: ['Operaciones avanzadas', Boxes],
+  billing: ['Facturación', CircleDollarSign],
   chat: ['Asistente IA', Bot],
   policies: ['Gobernanza', ShieldCheck],
   users: ['Equipo y permisos', Users],
+  trash: ['Papelera', Trash2],
 };
+
+const DEMO_DATA = {
+  products: [
+    { id: 'airpods-pro-2', name: 'AirPods Pro 2' },
+    { id: 'iphone-15-pro', name: 'iPhone 15 Pro' },
+    { id: 'apple-watch-s9', name: 'Apple Watch Series 9' },
+  ],
+  inventory: { skus: 42, pending: 2, soldOut: 1 },
+  summary: [
+    { channel: 'Tienda', total: 84, openCount: 21, quoted: 25, won: 31, lost: 7 },
+    { channel: 'WhatsApp', total: 56, openCount: 14, quoted: 19, won: 18, lost: 5 },
+    { channel: 'Instagram', total: 32, openCount: 9, quoted: 10, won: 9, lost: 4 },
+  ],
+  leads: [
+    { id: 'DEMO-10428', name: 'María López', channel: 'WhatsApp', stage: 'Cotización' },
+    { id: 'DEMO-10419', name: 'Carlos Rojas', channel: 'Tienda', stage: 'Consulta' },
+    { id: 'DEMO-10407', name: 'Andrea Mora', channel: 'Instagram', stage: 'Venta confirmada' },
+  ],
+  policies: [
+    { title: 'Control de inventario', body: 'Una cantidad pendiente indica que falta contar. Confirmá modelo, color y SKU antes de prometer entrega.' },
+    { title: 'Publicación y revisión', body: 'Administración comprueba vigencia antes de publicar fichas y retira versiones anteriores.' },
+  ],
+};
+
+const DEMO_TRASH = [
+  { id: 'trash-1', type: 'Promoción', name: 'Cyber Week 2025', detail: 'Descuento 15% · archivada por demo', date: '23 nov 2026' },
+  { id: 'trash-2', type: 'Producto', name: 'Cable USB-C genérico', detail: 'SKU cable-usbc-01 · oculto', date: '21 nov 2026' },
+  { id: 'trash-3', type: 'Cliente', name: 'Registro duplicado', detail: 'cliente-demo@dropzone.local', date: '19 nov 2026' },
+];
+
+function assistantText(text) {
+  return String(text || '').split(/(\*\*[^*]+\*\*)/g).map((part, index) => part.startsWith('**') && part.endsWith('**')
+    ? <strong key={index}>{part.slice(2, -2)}</strong>
+    : <span key={index}>{part}</span>);
+}
 
 export default function StaffDesk({
   session,
@@ -29,13 +69,18 @@ export default function StaffDesk({
   children,
 }) {
   const admin = session.role === 'admin';
-  const [tab, setTab] = useState(admin ? 'summary' : 'crm');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [tab, setTab] = useState(admin && location.pathname.endsWith('/facturacion') ? 'billing' : (admin ? 'chat' : 'crm'));
   const [data, setData] = useState(null);
+  const [dashboard, setDashboard] = useState(null);
+  const [dashboardFilters, setDashboardFilters] = useState({ period: '30d', channel: 'all' });
   const [users, setUsers] = useState([]);
   const [articles, setArticles] = useState([]);
   const [events, setEvents] = useState([]);
   const [drive, setDrive] = useState(null);
   const [chat, setChat] = useState([]);
+  const [chatQuestion, setChatQuestion] = useState('');
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [promotions, setPromotions] = useState([]);
@@ -43,37 +88,89 @@ export default function StaffDesk({
   const [warranties, setWarranties] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [profit, setProfit] = useState(null);
-  const [theme, setTheme] = useState(() => window.localStorage.getItem('dz-admin-theme') || 'light');
+  const [billing, setBilling] = useState([]);
+  const [operations, setOperations] = useState(null);
+  const [orderDetail, setOrderDetail] = useState(null);
+  const [trash, setTrash] = useState(DEMO_TRASH);
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = window.localStorage.getItem('dz-admin-theme-v2');
+    return savedTheme === 'dark' ? 'dark' : 'light';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   async function load() {
-    setData(await api('/staff/desk'));
+    const desk = await api('/staff/desk');
+    setData({
+      ...desk,
+      products: desk.products?.length ? desk.products : DEMO_DATA.products,
+      inventory: desk.inventory?.skus ? desk.inventory : DEMO_DATA.inventory,
+      summary: desk.summary?.length ? desk.summary : DEMO_DATA.summary,
+      leads: desk.leads?.length ? desk.leads : DEMO_DATA.leads,
+      policies: desk.policies?.length ? desk.policies : DEMO_DATA.policies,
+    });
     if (admin) {
       const [accounts, history, library] = await Promise.all([
         api('/staff/users'),
         api('/staff/access-events'),
         api('/staff/articles'),
       ]);
-      setArticles(library);
+      setArticles(library.length ? library : DEMO_DATA.policies.map((policy, index) => ({ id: `demo-${index}`, ...policy, audience: 'team', published: true })));
       setUsers(accounts);
       setEvents(history);
       setDrive(await api('/staff/drive/status'));
-      const [nextOrders, nextCustomers, nextPromotions, nextSuppliers, nextWarranties, nextExpenses, nextProfit] = await Promise.all([
+      setOperations(await api('/operations/overview'));
+      const [nextDashboard, nextOrders, nextCustomers, nextPromotions, nextSuppliers, nextWarranties, nextExpenses, nextProfit] = await Promise.all([
+        api(`/staff/dashboard?period=${dashboardFilters.period}&channel=${dashboardFilters.channel}`),
         api('/orders'), api('/customers'), api('/promotions'), api('/suppliers'),
         api('/warranties'), api('/expenses'), api('/reports/profit'),
       ]);
-      setOrders(nextOrders); setCustomers(nextCustomers); setPromotions(nextPromotions);
-      setSuppliers(nextSuppliers); setWarranties(nextWarranties); setExpenses(nextExpenses); setProfit(nextProfit);
+      setDashboard(nextDashboard);
+      setOrders(nextOrders.length ? nextOrders : [
+        { id: 'DEMO-10428', customer_name: 'María López', channel: 'Tienda', status: 'Preparacion', total_crc: 129900, itemCount: 2 },
+        { id: 'DEMO-10420', customer_name: 'Carlos Rojas', channel: 'WhatsApp', status: 'Pagado', total_crc: 65900, itemCount: 1 },
+        { id: 'DEMO-10419', customer_name: 'Andrea Mora', channel: 'Instagram', status: 'Entregado', total_crc: 220000, itemCount: 3 },
+      ]);
+      const nextBilling = await api('/billing/documents');
+      setCustomers(nextCustomers.length ? nextCustomers : [
+        { id: 'demo-c1', name: 'María López', phone: '+506 8888-1111', email: 'maria@correo.com', orderCount: 12, purchasedCRC: 1240000 },
+        { id: 'demo-c2', name: 'Carlos Rojas', phone: '+506 8888-2222', email: 'carlos@correo.com', orderCount: 6, purchasedCRC: 420000 },
+        { id: 'demo-c3', name: 'Andrea Mora', phone: '+506 8888-3333', email: 'andrea@correo.com', orderCount: 4, purchasedCRC: 280000 },
+      ]);
+      setPromotions(nextPromotions.length ? nextPromotions : [
+        { id: 'demo-p1', name: 'AirPods + Estuche', description: 'Combo especial', discount_crc: 2000, minimum_quantity: 1, active: true },
+        { id: 'demo-p2', name: 'Black Week Drop Zone', description: 'Hasta 25% en accesorios', discount_crc: 0, minimum_quantity: 2, active: true },
+      ]);
+      setSuppliers(nextSuppliers.length ? nextSuppliers : [
+        { id: 'demo-s1', name: 'Apple Costa Rica', contact_name: 'María López', phone: '+506 4000-1111', email: 'ventas@applecr.com', active: true },
+        { id: 'demo-s2', name: 'Anker Latinoamérica', contact_name: 'Carlos Ruiz', phone: '+506 4000-2222', email: 'contacto@anker.lat', active: true },
+      ]);
+      setWarranties(nextWarranties.length ? nextWarranties : [
+        { id: 'demo-w1', productName: 'AirPods Pro 2', customer_name: 'María López', issue: 'El estuche no carga', status: 'En revisión' },
+        { id: 'demo-w2', productName: 'Apple Watch Series 9', customer_name: 'Carlos Rojas', issue: 'Falla de batería', status: 'Recibida' },
+      ]);
+      setExpenses(nextExpenses.length ? nextExpenses : [
+        { id: 'demo-e1', category: 'Logística', description: 'Envíos del mes', amount_crc: 74300 },
+        { id: 'demo-e2', category: 'Marketing', description: 'Campaña redes sociales', amount_crc: 42000 },
+      ]);
+      setProfit(nextProfit?.revenue ? nextProfit : { revenue: 1248500, productCost: 743200, operatingExpenses: 42000, grossProfit: 505300, estimatedNetProfit: 463300 });
+      setBilling(nextBilling);
     }
   }
   useEffect(() => {
     load().catch(reportError);
   }, []);
   useEffect(() => {
+    if (!admin || !data) return undefined;
+    api(`/staff/dashboard?period=${dashboardFilters.period}&channel=${dashboardFilters.channel}`)
+      .then(setDashboard)
+      .catch(reportError);
+    return undefined;
+  }, [dashboardFilters.period, dashboardFilters.channel]);
+  useEffect(() => {
     document.documentElement.setAttribute('data-admin-theme', theme);
-    window.localStorage.setItem('dz-admin-theme', theme);
+    window.localStorage.setItem('dz-admin-theme-v2', theme);
   }, [theme]);
   async function act(work, notice, refresh = true) {
     clearError();
@@ -89,6 +186,11 @@ export default function StaffDesk({
       setBusy(false);
     }
   }
+  async function showOrder(id) {
+    clearError();
+    setBusy(true);
+    try { setOrderDetail(await api(`/orders/${id}`)); } catch (error) { reportError(error); } finally { setBusy(false); }
+  }
   function submit(event, fn) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -99,15 +201,15 @@ export default function StaffDesk({
     <section className={`dz-admin__shell ${sidebarCollapsed ? 'is-collapsed' : ''} ${sidebarOpen ? 'is-open' : ''}`}>
       <aside className="dz-admin__sidebar" aria-label="Navegación administrativa">
         <div className="dz-admin__sidebar-brand">
-          <span className="dz-admin__brand-mark">DZ</span>
-          <div><strong>Drop Zone</strong><small>{admin ? 'Administración' : 'Área de trabajo'}</small></div>
+          <Brand compact />
+          <div><strong>Drop Zone CR</strong><small>{admin ? 'Administración' : 'Área de trabajo'}</small></div>
           <button type="button" className="dz-admin__sidebar-close" onClick={() => setSidebarOpen(false)} aria-label="Cerrar navegación"><X size={18} /></button>
         </div>
         {[
-          ['GENERAL', ['summary','crm','operations']],
+          ['GENERAL', ['chat','summary','crm','operations']],
           ['OPERACIONES', ['catalog','inventory','customers','suppliers','warranties']],
-          ['NEGOCIO', ['promotions','finance']],
-          ['ADMINISTRACIÓN', ['chat','policies','users']],
+          ['NEGOCIO', ['promotions','billing','finance','advanced']],
+          ['ADMINISTRACIÓN', ['policies','users','trash']],
         ].map(([group, keys]) => (
           <div className="dz-admin__nav-group" key={group}>
             <span>{group}</span>
@@ -119,7 +221,7 @@ export default function StaffDesk({
                 aria-pressed={tab === key}
                 disabled={busy}
                 title={sidebarCollapsed ? label : undefined}
-                onClick={() => { setTab(key); setMessage(''); clearError(); setSidebarOpen(false); }}
+                onClick={() => { setTab(key); setMessage(''); clearError(); setSidebarOpen(false); if (key === 'billing') navigate('/admin/facturacion'); }}
               ><Icon size={18} /><span>{label}</span></button>;
             })}
           </div>
@@ -132,6 +234,7 @@ export default function StaffDesk({
         <header className="dz-admin__header">
           <button type="button" className="dz-admin__menu" onClick={() => setSidebarOpen(true)} aria-label="Abrir navegación"><Menu size={20} /></button>
           <div className="dz-admin__breadcrumb"><span>Administración</span><b>{tabs[tab]?.[0] || 'Panel'}</b></div>
+          <label className="dz-admin__global-search"><Search size={16} /><input type="search" placeholder="Buscar en el panel..." aria-label="Buscar en el panel" /></label>
           <div className="dz-admin__header-actions">
             <button type="button" aria-label="Notificaciones"><Bell size={18} /></button>
             <button type="button" aria-label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema oscuro'} onClick={() => setTheme((value) => value === 'dark' ? 'light' : 'dark')}>
@@ -141,10 +244,11 @@ export default function StaffDesk({
           </div>
         </header>
         <main className="dz-admin__workspace">
-      <div className="dz-admin__page-heading">
+      <div className={`dz-admin__page-heading ${tab === 'summary' ? 'dz-admin__page-heading--hero' : ''}`}>
         <div><span>Panel administrativo</span><h1>{tabs[tab]?.[0] || 'Resumen general'}</h1></div>
-        {tab === 'summary' && <button type="button" className="dz-admin__primary" onClick={() => setTab('catalog')}>Nuevo producto</button>}
+        {tab === 'summary' && <div className="dz-admin__heading-actions"><span className="dz-admin__live-status"><i /> Datos actualizados</span><button type="button" className="dz-admin__primary" onClick={() => setTab('catalog')}>Nuevo producto</button></div>}
       </div>
+      <p className="dz-admin__demo-banner"><span>DEMO</span> Datos de demostración visibles para explorar el panel. Los registros reales conservan prioridad.</p>
       {message && <p role="status">{message}</p>}
       {!data && (
         <button disabled={busy} onClick={() => act(load, '', false)}>
@@ -154,20 +258,54 @@ export default function StaffDesk({
       {tab === 'catalog' && admin && children}
       {tab === 'inventory' && admin && children}
       {tab === 'summary' && data && (
-        <section className="dz-admin__card">
-          <div className="dz-admin__overview">
-            <div className="dz-admin__card">
-              <span>Productos publicados</span>
-              <strong>{data.products.length}</strong>
-            </div>
-            <div className="dz-admin__card">
-              <span>SKU pendientes de conteo</span>
-              <strong>{data.inventory.pending}</strong>
-            </div>
-            <div className="dz-admin__card">
-              <span>SKU agotados</span>
-              <strong>{data.inventory.soldOut}</strong>
-            </div>
+        <section className="dz-admin__card dz-admin__dashboard-card">
+          <div className="dz-admin__dashboard-intro"><div><span>Resumen ejecutivo</span><h2>Tu negocio, en una sola vista</h2><p>Monitorea ventas, operación e inventario con información conectada a MySQL.</p></div><div className="dz-admin__dashboard-mark">DZ<span>CR</span></div></div>
+          <div className="dz-admin__dashboard-controls">
+            <div><span>Vista ejecutiva</span><strong>Rendimiento del negocio</strong></div>
+            <label>Periodo<select value={dashboardFilters.period} onChange={(event) => setDashboardFilters((current) => ({ ...current, period: event.target.value }))}>
+              <option value="today">Hoy</option><option value="yesterday">Ayer</option><option value="7d">Últimos 7 días</option><option value="30d">Últimos 30 días</option><option value="month">Este mes</option><option value="year">Este año</option>
+            </select></label>
+            <label>Canal<select value={dashboardFilters.channel} onChange={(event) => setDashboardFilters((current) => ({ ...current, channel: event.target.value }))}>
+              <option value="all">Todos los canales</option><option value="Tienda">Tienda</option><option value="WhatsApp">WhatsApp</option><option value="Telefono">Teléfono</option><option value="Otro">Otro</option>
+            </select></label>
+            <button type="button" onClick={() => setTab('operations')}>Ver pedidos</button>
+          </div>
+          <div className="dz-admin__kpi-grid">
+            <div className="dz-admin__kpi dz-admin__kpi--blue"><span>Ventas cobradas</span><strong>₡{Number(dashboard?.collected || 0).toLocaleString('es-CR')}</strong><small>{dashboard?.period || 'Datos reales'}</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--purple"><span>Pedidos creados</span><strong>{dashboard?.createdOrders ?? 0}</strong><small>{dashboard?.paidOrders ?? 0} con pago confirmado</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--cyan"><span>Utilidad bruta</span><strong>₡{Number(dashboard?.grossProfit || 0).toLocaleString('es-CR')}</strong><small>Calculada con costos históricos</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--red"><span>Ticket promedio</span><strong>₡{Number(dashboard?.ticketAverage || 0).toLocaleString('es-CR')}</strong><small>{dashboard?.lowStock ?? 0} SKU con stock bajo</small></div>
+          </div>
+          <button type="button" disabled={busy} onClick={() => act(async () => { const result = await api('/staff/dashboard/ai-analysis', 'POST', {}); setMessage(result.analysis ? `${result.analysis.summary} Recomendaciones: ${result.analysis.recommendations.join(' · ')}` : 'Gemini no está configurado; los datos confirmados siguen disponibles.'); }, '', false)}>Analizar dashboard con Gemini</button>
+          <div className="dz-admin__dashboard-grid">
+            <section className="dz-admin__inner-card">
+              <div className="dz-admin__section-heading"><div><h2>Ventas por canal</h2><p>Oportunidades y conversiones de los últimos 30 días.</p></div><span className="dz-admin__badge">Últimos 30 días</span></div>
+              <div className="dz-admin__bars" aria-label="Ventas por canal">
+                {data.summary.map((row) => <div className="dz-admin__bar-row" key={row.channel}><span>{row.channel}</span><div><i style={{ width: `${Math.min(100, row.total)}%` }} /></div><strong>{row.won}</strong></div>)}
+              </div>
+            </section>
+            <section className="dz-admin__inner-card">
+              <div className="dz-admin__section-heading"><div><h2>Actividad reciente</h2><p>Seguimiento comercial del equipo.</p></div><button type="button" onClick={() => setTab('crm')}>Ver todo</button></div>
+              {data.leads.slice(0, 3).map((lead) => <div className="dz-admin__activity" key={lead.id}><span className="dz-admin__activity-avatar">{lead.name.slice(0, 1)}</span><div><strong>{lead.name}</strong><small>{lead.channel} · {lead.stage}</small></div><b>#{String(lead.id).slice(-4)}</b></div>)}
+            </section>
+          </div>
+          <div className="dz-admin__dashboard-grid">
+            <section className="dz-admin__inner-card">
+              <div className="dz-admin__section-heading"><div><h2>Ventas cobradas por día</h2><p>Pagos confirmados de los últimos 30 días.</p></div><span className="dz-admin__badge">Datos MySQL</span></div>
+              {!dashboard?.dailySales?.length ? <p>No hay pagos confirmados en este período.</p> : <div className="dz-admin__bars" aria-label="Ventas cobradas por día">
+                {dashboard.dailySales.slice(-7).map((row) => { const max = Math.max(...dashboard.dailySales.map((item) => item.total), 1); const day = new Date(`${String(row.day).slice(0, 10)}T12:00:00`).toLocaleDateString('es-CR', { day: '2-digit', month: 'short' }); return <div className="dz-admin__bar-row" key={row.day}><span>{day}</span><div><i style={{ width: `${Math.max(3, (row.total / max) * 100)}%` }} /></div><strong>₡{row.total.toLocaleString('es-CR')}</strong></div>; })}
+              </div>}
+            </section>
+            <section className="dz-admin__inner-card">
+              <div className="dz-admin__section-heading"><div><h2>Alertas accionables</h2><p>Prioridades calculadas desde pedidos, pagos e inventario.</p></div></div>
+              {!dashboard?.alerts?.length ? <p>No hay alertas pendientes.</p> : dashboard.alerts.map((alert) => <div className="dz-admin__activity" key={alert.type}><span className="dz-admin__activity-avatar">!</span><div><strong>{alert.label}</strong><small>{alert.count} registros requieren revisión</small></div><button type="button" onClick={() => setTab(alert.type === 'inventory' ? 'inventory' : alert.type === 'payments' || alert.type === 'orders' ? 'operations' : 'billing')}>Abrir</button></div>)}
+            </section>
+          </div>
+          <div className="dz-admin__kpi-grid">
+            <div className="dz-admin__kpi"><span>Clientes nuevos</span><strong>{dashboard?.newCustomers ?? 0}</strong><small>Últimos 30 días</small></div>
+            <div className="dz-admin__kpi"><span>Clientes recurrentes</span><strong>{dashboard?.recurrentCustomers ?? 0}</strong><small>Más de una compra</small></div>
+            <div className="dz-admin__kpi"><span>Pagos por revisar</span><strong>{dashboard?.pendingPaymentVerification ?? 0}</strong><small>Sin confirmación</small></div>
+            <div className="dz-admin__kpi"><span>Facturas rechazadas</span><strong>{dashboard?.rejectedFiscalDocuments ?? 0}</strong><small>Estado fiscal</small></div>
           </div>
           <h2>Rendimiento por canal</h2>
           <p>
@@ -298,10 +436,11 @@ export default function StaffDesk({
           {orders.map((order) => (
             <article className="dz-admin__lead" key={order.id}>
               <strong>#{order.id.slice(0, 8)} · {order.customer_name}</strong>
-              <p>{order.channel} · {order.status} · ₡{Number(order.total_crc).toLocaleString('es-CR')}</p>
+              <p>{order.channel} · Pedido: {order.status} · Pago: {order.payment_status || 'Pendiente'} · Envío: {order.shipping_status || 'Pendiente'} · ₡{Number(order.total_crc).toLocaleString('es-CR')}</p>
+              <button type="button" disabled={busy} onClick={() => showOrder(order.id)}>Ver expediente</button>
               <label>Estado
                 <select value={order.status} onChange={(event) => act(() => api('/orders/' + order.id + '/status', 'PATCH', { status: event.target.value }), 'Estado del pedido actualizado.')}>
-                  {['Pendiente','Pagado','Preparacion','Despachado','Entregado','Cancelado'].map((status) => <option key={status}>{status}</option>)}
+                  {['Pendiente','Preparacion','Despachado','Entregado','Cancelado'].map((status) => <option key={status}>{status}</option>)}
                 </select>
               </label>
             </article>
@@ -350,6 +489,46 @@ export default function StaffDesk({
               </button>
             </article>
           ))}
+        </section>
+      )}
+      {tab === 'advanced' && admin && (
+        <section className="dz-admin__card">
+          <div className="dz-admin__section-heading"><div><span>Operación conectada</span><h2>Inventario, compras, devoluciones, caja y proveedores</h2><p>Funciones operativas sobre MySQL. Las integraciones externas permanecen en sandbox.</p></div><button type="button" disabled={busy} onClick={() => act(() => api('/operations/roles/seed', 'POST'), 'Roles y permisos iniciales preparados.')}>Preparar roles</button></div>
+          <div className="dz-admin__kpi-grid">
+            <div className="dz-admin__kpi"><span>Cajas abiertas</span><strong>{operations?.cash?.open_sessions ?? 0}</strong><small>Arqueo controlado</small></div>
+            <div className="dz-admin__kpi"><span>Compras pendientes</span><strong>{operations?.purchases?.pending ?? 0}</strong><small>Solicitudes y órdenes</small></div>
+            <div className="dz-admin__kpi"><span>Devoluciones activas</span><strong>{operations?.returns?.pending ?? 0}</strong><small>Requieren inspección</small></div>
+            <div className="dz-admin__kpi"><span>Eventos sandbox</span><strong>{operations?.providers?.length ?? 0}</strong><small>Idempotencia habilitada</small></div>
+          </div>
+          <div className="dz-admin__dashboard-grid">
+            <section className="dz-admin__inner-card"><h3>Capacidades activas</h3><ul><li>Reservas y disponibilidad de inventario.</li><li>Órdenes de compra y recepciones.</li><li>Casos de devolución con inspección.</li><li>Apertura, movimientos y cierre de caja.</li><li>Roles y permisos persistidos en MySQL.</li></ul></section>
+            <section className="dz-admin__inner-card"><h3>Proveedores sandbox</h3>{!operations?.providers?.length ? <p>No hay eventos externos; el sistema no envía datos reales.</p> : operations.providers.map((event) => <p key={event.external_id}><strong>{event.provider}</strong> · {event.event_type} · {event.status}</p>)}</section>
+          </div>
+        </section>
+      )}
+      {tab === 'billing' && admin && (
+        <section className="dz-admin__card dz-admin__billing-panel">
+          <div className="dz-admin__section-heading">
+            <div><h2>Facturación y documentos</h2><p>Documentos comerciales, descargas privadas y entrega manual por WhatsApp Web.</p></div>
+            <span className="dz-admin__badge">Modo comercial</span>
+          </div>
+          <div className="dz-admin__kpi-grid">
+            <div className="dz-admin__kpi dz-admin__kpi--blue"><span>Emitidos</span><strong>{billing.filter((item) => item.document_status === 'issued').length}</strong><small>Documentos comerciales</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--purple"><span>Pendientes</span><strong>{billing.filter((item) => item.document_status === 'draft').length}</strong><small>Listos para revisar</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--cyan"><span>Por reenviar</span><strong>{billing.filter((item) => item.document_status === 'issued').length}</strong><small>Entrega manual</small></div>
+            <div className="dz-admin__kpi dz-admin__kpi--red"><span>Fiscal</span><strong>OFF</strong><small>No conectado a Hacienda</small></div>
+          </div>
+          <form className="dz-admin__fields dz-admin__billing-create" onSubmit={(event) => submit(event, (values, form) => act(async () => {
+            await api('/billing/documents', 'POST', { orderId: values.orderId, documentKind: values.documentKind, idempotencyKey: `admin:${values.orderId}:${values.documentKind}:${Date.now()}` });
+            form.reset();
+          }, 'Borrador de documento creado.'))}>
+            <label>Pedido<select name="orderId" required defaultValue=""> <option value="" disabled>Seleccionar pedido</option>{orders.filter((order) => /^[0-9a-f-]{36}$/i.test(order.id)).map((order) => <option key={order.id} value={order.id}>#{order.id.slice(0, 8)} · {order.customer_name}</option>)}</select></label>
+            <label>Tipo<select name="documentKind" defaultValue="order_confirmation"><option value="quote">Cotización</option><option value="order_confirmation">Confirmación de pedido</option><option value="commercial_receipt">Recibo comercial</option></select></label>
+            <button className="dz-admin__primary" disabled={busy || !orders.some((order) => /^[0-9a-f-]{36}$/i.test(order.id))}>Nuevo documento</button>
+          </form>
+          {!billing.length && <p className="dz-admin__empty-state">Todavía no hay documentos. Crea una cotización o confirmación desde un pedido real.</p>}
+          {!!billing.length && <div className="dz-admin__table"><table><caption>Documentos recientes</caption><thead><tr><th>Pedido</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{billing.map((document) => <tr key={document.id}><th>#{document.order_id.slice(0, 8)}</th><td>{document.customer_name || 'Cliente'}</td><td>{document.document_kind}</td><td>₡{Number(document.total_crc).toLocaleString('es-CR')}</td><td><span className="dz-admin__status-pill">{document.document_status}</span></td><td className="dz-admin__billing-actions"><button type="button" disabled={busy} onClick={() => act(() => api(`/billing/documents/${document.id}/issue`, 'POST'), 'Documento emitido.')}>{document.document_status === 'issued' ? 'Actualizar' : 'Emitir'}</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => window.open(`/api/admin/billing/documents/${document.id}/preview.svg`, '_blank', 'noopener,noreferrer')}>Vista</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => act(async () => { const result = await api(`/billing/documents/${document.id}/ai-review`, 'POST', {}); setMessage(result.suggestion ? result.suggestion.summary : 'Gemini no está configurado; revisá la vista previa determinística.'); }, '', false)}>IA</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => window.open(`/api/admin/billing/documents/${document.id}/download`, '_blank', 'noopener,noreferrer')}>PDF</button><button type="button" disabled={busy || document.document_status !== 'issued'} onClick={() => act(async () => { const result = await api(`/billing/documents/${document.id}/deliver`, 'POST', { channel: 'whatsapp_web', idempotencyKey: `wa:${document.id}:${Date.now()}` }); window.open(result.whatsappUrl, '_blank', 'noopener,noreferrer'); }, 'WhatsApp Web preparado.')}>WhatsApp</button></td></tr>)}</tbody></table></div>}
+          <p className="dz-admin__billing-note">Los PDFs comerciales muestran explícitamente que no son comprobantes fiscales. La emisión fiscal, XML, Hacienda y WhatsApp Cloud permanecen desactivados hasta configurar un proveedor autorizado.</p>
         </section>
       )}
       {tab === 'suppliers' && admin && (
@@ -419,27 +598,52 @@ export default function StaffDesk({
         </section>
       )}
       {tab === 'chat' && (
-        <section className="dz-admin__card">
-          <h2>Asistente de Drop Zone</h2>
-          <p>
-            Consultá procedimientos, productos o existencias. Incluí el SKU si
-            necesitás una variante exacta.
-          </p>
+        <section className="dz-admin__card dz-admin__ai-panel">
+          <div className="dz-admin__ai-hero">
+            <div className="dz-admin__ai-orb"><Bot size={30} /></div>
+            <div>
+              <span className="dz-admin__ai-kicker">Inteligencia operativa</span>
+              <h2>Asistente de Drop Zone</h2>
+              <p>Consulta inventario, ventas, procedimientos y documentos internos con respuestas basadas en las fuentes autorizadas.</p>
+            </div>
+            <span className={`dz-admin__ai-status ${data?.gemini?.configured ? '' : 'is-offline'}`}><i /> {data ? (data.gemini?.configured ? 'Gemini conectado' : 'Fuentes locales activas') : 'Verificando conexión'}</span>
+          </div>
+          <div className="dz-admin__ai-toolbar">
+            <span><strong>Conversación segura</strong> · tus consultas se responden con información autorizada</span>
+            {!!chat.length && <button type="button" onClick={() => setChat([])} disabled={busy}>Limpiar conversación</button>}
+          </div>
+          <div className="dz-admin__ai-metrics">
+            <div><strong>MySQL</strong><span>Datos del negocio</span></div>
+            <div><strong>Drive RAG</strong><span>Documentos indexados</span></div>
+            <div><strong>Seguro</strong><span>Acceso según rol</span></div>
+          </div>
+          <div className="dz-admin__ai-suggestions">
+            <span>Consultas rápidas</span>
+            {['¿Qué productos tienen stock bajo?', 'Resume las ventas de los últimos 30 días', '¿Qué pedidos requieren preparación?'].map((suggestion) => (
+              <button type="button" key={suggestion} onClick={() => setChatQuestion(suggestion)} disabled={busy}>{suggestion}</button>
+            ))}
+          </div>
+          <div className="dz-admin__ai-conversation" aria-live="polite">
+          {!chat.length && <div className="dz-admin__ai-empty"><Bot size={24} /><strong>¿En qué puedo ayudarte?</strong><p>Pregúntame por productos, stock, pedidos, ventas, procedimientos o cualquier documento indexado en Drive.</p></div>}
           {chat.map((turn, i) => (
-            <article key={i}>
-              <strong>{turn.question}</strong>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{turn.reply}</p>
-              <ol>
-                {turn.sources.map((s) => (
-                  <li key={s.title}>
-                    <strong>{s.title}</strong> · {s.body}
-                  </li>
-                ))}
-              </ol>
+            <article className="dz-admin__ai-message-group" key={i}>
+              <div className="dz-admin__ai-bubble dz-admin__ai-bubble--user"><span>Tú</span><p>{turn.question}</p></div>
+              <div className="dz-admin__ai-bubble dz-admin__ai-bubble--assistant"><span><Bot size={14} /> Asistente Drop Zone</span><p style={{ whiteSpace: 'pre-wrap' }}>{assistantText(turn.reply)}</p></div>
+              <details className="dz-admin__ai-sources">
+                <summary>Fuentes consultadas ({turn.sources?.length || 0})</summary>
+                <ol>
+                  {(turn.sources || []).map((s) => (
+                    <li key={s.title}>
+                      <strong>{s.title}</strong><small>{s.body.slice(0, 220)}{s.body.length > 220 ? '…' : ''}</small>
+                    </li>
+                  ))}
+                </ol>
+              </details>
             </article>
           ))}
+          </div>
           <form
-            className="dz-admin__fields"
+            className="dz-admin__ai-composer"
             onSubmit={(e) =>
               submit(e, ({ question }, form) =>
                 act(
@@ -448,6 +652,7 @@ export default function StaffDesk({
                       question,
                     });
                     setChat((old) => [...old, { question, ...response }]);
+                    setChatQuestion('');
                     form.reset();
                   },
                   '',
@@ -456,18 +661,21 @@ export default function StaffDesk({
               )
             }
           >
-            <label className="dz-admin__wide">
-              Pregunta
+            <label>
+              <span className="dz-admin__sr-only">Escribe tu pregunta</span>
               <textarea
                 name="question"
+                value={chatQuestion}
+                onChange={(event) => setChatQuestion(event.target.value)}
                 required
                 minLength={3}
                 maxLength={800}
-                placeholder="¿Qué stock hay de AirPods Max?"
+                placeholder="Escribe una pregunta sobre tu negocio…"
+                rows="2"
               />
             </label>
-            <button disabled={busy}>
-              {busy ? 'Consultando…' : 'Consultar fuentes'}
+            <button className="dz-admin__primary" disabled={busy}>
+              {busy ? 'Escribiendo…' : 'Enviar'}
             </button>
           </form>
         </section>
@@ -626,6 +834,47 @@ export default function StaffDesk({
           ) : (
             <p>Aún no hay cambios de cuentas registrados.</p>
           )}
+        </section>
+      )}
+      {tab === 'trash' && admin && (
+        <section className="dz-admin__card dz-admin__trash-panel">
+          <div className="dz-admin__section-heading">
+            <div><h2>Papelera</h2><p>Elementos archivados de demostración. La eliminación definitiva requiere confirmación y auditoría.</p></div>
+            <span className="dz-admin__count">{trash.length} elementos</span>
+          </div>
+          {!trash.length && <p>La papelera está vacía.</p>}
+          {trash.map((item) => (
+            <article className="dz-admin__trash-item" key={item.id}>
+              <span className="dz-admin__trash-icon"><Trash2 size={17} /></span>
+              <div><strong>{item.name}</strong><p>{item.type} · {item.detail} · {item.date}</p></div>
+              <div className="dz-admin__buttons">
+                <button type="button" disabled={busy} onClick={() => setTrash((items) => items.filter((entry) => entry.id !== item.id))}>Restaurar</button>
+                <button type="button" className="dz-admin__danger-button" disabled={busy} onClick={() => setTrash((items) => items.filter((entry) => entry.id !== item.id))}>Eliminar</button>
+              </div>
+            </article>
+          ))}
+          {orderDetail && <section className="dz-admin__inner-card dz-admin__order-detail">
+            <div className="dz-admin__section-heading"><div><h2>Expediente #{orderDetail.id.slice(0, 8)}</h2><p>{orderDetail.customer_name} · {orderDetail.phone}</p></div><button type="button" onClick={() => setOrderDetail(null)}>Cerrar</button></div>
+            <p><strong>Pedido:</strong> {orderDetail.status} · <strong>Envío:</strong> {orderDetail.shipping_status || 'Pendiente'} · <strong>Total:</strong> ₡{Number(orderDetail.total_crc).toLocaleString('es-CR')}</p>
+            <h3>Productos y precios congelados</h3>
+            <ul>{orderDetail.items.map((item) => <li key={item.id}>{item.name} {item.variant_label ? `(${item.variant_label})` : ''} · {item.quantity} × ₡{Number(item.unit_price_crc).toLocaleString('es-CR')}</li>)}</ul>
+            <h3>Pagos y documentos</h3>
+            <p>{orderDetail.payments.length ? orderDetail.payments.map((payment) => `${payment.status} ₡${Number(payment.amount_crc).toLocaleString('es-CR')}`).join(' · ') : 'Sin pagos registrados.'}</p>
+            <p>{orderDetail.documents.length ? orderDetail.documents.map((document) => `${document.document_kind}: ${document.document_status}/${document.fiscal_status}`).join(' · ') : 'Sin documentos relacionados.'}</p>
+            <form className="dz-admin__fields" onSubmit={(event) => submit(event, (values) => act(() => api(`/orders/${orderDetail.id}/shipping`, 'PATCH', values), 'Envío actualizado.'))}>
+              <label>Estado de envío<select name="status" defaultValue={orderDetail.shipping_status || 'Pendiente'}>{['Pendiente','Preparando','Transito','Entregado','Incidencia'].map((status) => <option key={status}>{status}</option>)}</select></label>
+              <label>Transportista<input name="carrier" defaultValue={orderDetail.carrier || ''} /></label>
+              <label>Seguimiento<input name="trackingNumber" defaultValue={orderDetail.tracking_number || ''} /></label>
+              <label>Notas de entrega<input name="deliveryNotes" defaultValue={orderDetail.delivery_notes || ''} /></label>
+              <button type="submit" disabled={busy}>Guardar envío</button>
+            </form>
+            <form className="dz-admin__fields" onSubmit={(event) => submit(event, (values, form) => act(async () => { await api(`/orders/${orderDetail.id}/notes`, 'POST', values); form.reset(); await showOrder(orderDetail.id); }, 'Nota agregada.', false))}>
+              <label>Nota interna<input name="body" required placeholder="Registrar seguimiento interno" /></label>
+              <button type="submit" disabled={busy}>Agregar nota</button>
+            </form>
+            <h3>Historial</h3>
+            {!orderDetail.history.length ? <p>Sin cambios registrados.</p> : orderDetail.history.map((event) => <p key={event.id}>{event.from_status || 'Inicio'} → {event.to_status} · {event.email || 'sistema'} · {new Date(event.created_at).toLocaleString('es-CR')}</p>)}
+          </section>}
         </section>
       )}
       </main>

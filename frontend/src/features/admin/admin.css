@@ -26,6 +26,7 @@
   --admin-border: #243750;
   --admin-primary: #60a5fa;
   --admin-primary-hover: #93c5fd;
+  --admin-shadow: 0 18px 45px rgba(0,0,0,.24);
 }
 
 .dz-admin {
@@ -83,15 +84,17 @@
 .dz-admin__top .brand__logo { width: 138px; height: auto; }
 .dz-admin__top a { margin-left: auto; color: var(--admin-primary); text-decoration: none; font-weight: 700; font-size: 13px; }
 .dz-admin__top button { border: 1px solid var(--admin-border); border-radius: 10px; padding: 9px 12px; background: var(--admin-surface); color: var(--admin-text); }
+.dz-admin__totp-setup { position: fixed; z-index: 100; top: 50%; left: 50%; width: min(440px, calc(100% - 32px)); transform: translate(-50%, -50%); display: grid; gap: 14px; padding: 26px; border: 1px solid var(--admin-border); border-radius: 18px; background: var(--admin-surface); box-shadow: 0 24px 80px rgba(15,23,42,.32); }
+.dz-admin__totp-setup h2, .dz-admin__totp-setup p { margin: 0; }
+.dz-admin__totp-setup code { overflow-wrap: anywhere; padding: 12px; border-radius: 10px; background: var(--admin-surface-soft); color: var(--admin-text); }
+.dz-admin__totp-setup form { display: grid; gap: 10px; }
 .dz-admin__demo { margin-left: 18px; display: flex; align-items: center; gap: 8px; color: var(--admin-text-muted); font-size: 12px; font-weight: 700; }
 .dz-admin__demo span { width: 8px; height: 8px; border-radius: 50%; background: var(--admin-warning); box-shadow: 0 0 0 4px color-mix(in srgb, var(--admin-warning) 16%, transparent); }
 
 .dz-admin__login {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  width: min(460px, calc(100% - 32px));
-  transform: translate(-50%, -50%);
+  position: relative;
+  width: min(500px, 100%);
+  min-height: 0;
   display: grid;
   gap: 24px;
   box-sizing: border-box;
@@ -102,12 +105,23 @@
   box-shadow: 0 30px 90px rgba(15,23,42,.16), 0 0 0 8px rgba(255,255,255,.24);
   backdrop-filter: blur(18px);
 }
+.dz-admin__login-layout { width: min(1120px, calc(100% - 48px)); min-height: 100vh; margin: 0 auto; display: grid; grid-template-columns: minmax(280px, .82fr) minmax(420px, 500px); align-items: center; justify-content: center; gap: clamp(36px, 7vw, 96px); padding: 56px 0; box-sizing: border-box; }
+.dz-admin__login-aside { display: grid; align-content: center; gap: 16px; max-width: 430px; color: var(--admin-text); }
+.dz-admin__login-aside .brand__logo { width: min(260px, 70%); height: auto; margin-bottom: 14px; }
+.dz-admin__login-aside-kicker { color: var(--admin-primary); font-size: 12px; font-weight: 900; letter-spacing: .14em; }
+.dz-admin__login-aside h1 { max-width: 10ch; margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: .98; letter-spacing: -.065em; }
+.dz-admin__login-aside p { max-width: 38ch; margin: 0; color: var(--admin-text-muted); font-size: 17px; line-height: 1.6; }
+.dz-admin__login-aside-points { display: flex; align-items: center; gap: 10px; color: var(--admin-text-muted); font-size: 13px; font-weight: 700; }
+.dz-admin__login-aside-points span { color: var(--admin-primary); font-size: 9px; }
 .dz-admin__login-brand { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .dz-admin__login-brand .brand__logo { width: 168px; height: auto; }
 .dz-admin__login-badge { padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--admin-primary) 18%, var(--admin-border)); border-radius: 999px; color: var(--admin-primary); background: color-mix(in srgb, var(--admin-primary) 7%, transparent); font-size: 10px; font-weight: 900; letter-spacing: .12em; }
 .dz-admin__login h1 { margin: 0; font-size: clamp(28px, 5vw, 34px); line-height: 1.04; letter-spacing: -.055em; }
 .dz-admin__login-help { max-width: 36ch; margin: -12px 0 0; color: var(--admin-text-muted); font-size: 14px; line-height: 1.55; }
+.dz-admin__login-notice { margin: 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--admin-primary) 24%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--admin-primary) 8%, var(--admin-surface)); color: var(--admin-text); font-size: 14px; line-height: 1.45; }
 .dz-admin__login label { display: grid; gap: 7px; color: var(--admin-text-muted); font-size: 13px; font-weight: 700; }
+.dz-admin__login-fields { display: grid; gap: inherit; margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.dz-admin__login-fields.is-hidden { display: none; }
 .dz-admin__login input { min-height: 48px; border-radius: 12px; padding-inline: 14px; }
 .dz-admin__demo-login { display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; padding: 13px; border: 1px dashed color-mix(in srgb, var(--admin-primary) 28%, var(--admin-border)); border-radius: 14px; background: color-mix(in srgb, var(--admin-primary) 5%, var(--admin-surface)); }
 .dz-admin__demo-login div { display: grid; gap: 2px; }
@@ -117,6 +131,7 @@
 .dz-admin__demo-login button { grid-column: 1 / -1; min-height: 34px; border-color: color-mix(in srgb, var(--admin-primary) 30%, var(--admin-border)); color: var(--admin-primary); font-size: 12px; }
 .dz-admin__login-submit { width: 100%; min-height: 48px; border-radius: 12px !important; font-size: 14px !important; box-shadow: 0 10px 20px color-mix(in srgb, var(--admin-primary) 22%, transparent); }
 .dz-admin__login-submit:hover:not(:disabled) { background: var(--admin-primary-hover) !important; transform: translateY(-1px); box-shadow: 0 13px 24px color-mix(in srgb, var(--admin-primary) 28%, transparent); }
+.dz-admin__text-button { justify-self: start; min-height: auto !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: var(--admin-primary) !important; font-size: 12px !important; font-weight: 800; }
 .dz-admin__login-footnote { display: flex; align-items: center; justify-content: center; gap: 7px; margin: -4px 0 0; color: var(--admin-text-muted); font-size: 11px; }
 .dz-admin__login-footnote span { color: var(--admin-success); font-size: 9px; }
 .dz-admin__back-link { justify-self: center; color: var(--admin-primary); font-size: 13px; font-weight: 800; text-decoration: none; }
@@ -150,7 +165,7 @@
 .dz-admin button:hover:not(:disabled) { border-color: color-mix(in srgb, var(--admin-primary) 45%, var(--admin-border)); background: var(--admin-surface-soft); }
 .dz-admin button:disabled { opacity: .58; cursor: not-allowed; }
 .dz-admin__primary { border: 0 !important; border-radius: 10px !important; padding: 10px 14px !important; background: var(--admin-primary) !important; color: #fff !important; font-weight: 800 !important; }
-.dz-admin__error { position: fixed; z-index: 80; top: 82px; right: 24px; max-width: 420px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--admin-danger) 9%, var(--admin-surface)); color: var(--admin-danger); }
+.dz-admin__error { position: fixed; z-index: 80; top: 82px; right: 24px; width: min(420px, calc(100vw - 32px)); box-sizing: border-box; max-width: 420px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--admin-danger) 9%, var(--admin-surface)); color: var(--admin-danger); line-height: 1.35; box-shadow: 0 12px 30px rgba(15,23,42,.12); }
 
 .dz-admin__shell { min-height: 100vh; padding-top: var(--admin-header-height); }
 .dz-admin__sidebar {
@@ -169,6 +184,7 @@
   transition: width .22s ease, transform .22s ease;
 }
 .dz-admin__sidebar-brand { display: none; }
+.dz-admin__sidebar-brand .footer-wordmark { color: var(--admin-text); font-size: 11px; }
 .dz-admin__nav-group { display: grid; gap: 3px; margin-bottom: 18px; }
 .dz-admin__nav-group > span { padding: 8px 12px 5px; color: var(--admin-text-muted); font-size: 10px; font-weight: 800; letter-spacing: .13em; }
 .dz-admin__nav-group button, .dz-admin__collapse {
@@ -208,11 +224,16 @@
 .dz-admin__breadcrumb span::after { content: '/'; margin-left: 9px; color: var(--admin-border); }
 .dz-admin__breadcrumb b { color: var(--admin-text); }
 .dz-admin__header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.dz-admin__global-search { width: min(330px, 35vw); min-height: 38px; display: flex; align-items: center; gap: 8px; margin-left: 18px; padding: 0 11px; border: 1px solid var(--admin-border); border-radius: 10px; background: var(--admin-surface-soft); color: var(--admin-text-muted); }
+.dz-admin__global-search input { min-height: 30px; padding: 4px 0; border: 0; background: transparent; box-shadow: none !important; }
 .dz-admin__header-actions button { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--admin-border); border-radius: 10px; background: var(--admin-surface); color: var(--admin-text-muted); }
 .dz-admin__avatar { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--admin-primary); color: #fff; font-size: 13px; font-weight: 800; }
 .dz-admin__menu, .dz-admin__sidebar-close { display: none !important; }
 
 .dz-admin__workspace { max-width: 1500px; margin: 0 auto; padding: 28px; }
+.dz-admin__workspace > * { min-width: 0; }
+.dz-admin__demo-banner { display: flex; align-items: center; gap: 8px; margin: -8px 0 18px; color: var(--admin-text-muted); font-size: 12px; }
+.dz-admin__demo-banner span { padding: 4px 7px; border-radius: 5px; color: #fff; background: var(--admin-primary); font-size: 9px; font-weight: 900; letter-spacing: .08em; }
 .dz-admin__page-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .dz-admin__page-heading span { color: var(--admin-text-muted); font-size: 12px; font-weight: 700; }
 .dz-admin__page-heading h1 { margin: 4px 0 0; font-size: 28px; line-height: 1.1; letter-spacing: -.035em; }
@@ -221,10 +242,50 @@
 .dz-admin__card h2 { margin: 0 0 14px; font-size: 18px; letter-spacing: -.02em; }
 .dz-admin__card h3 { margin: 18px 0 10px; font-size: 14px; }
 .dz-admin__card p { color: var(--admin-text-muted); font-size: 13px; }
+.dz-admin__ai-panel { display: grid; gap: 20px; padding: clamp(20px, 3vw, 34px); background: radial-gradient(circle at 92% 5%, color-mix(in srgb, var(--admin-primary) 13%, transparent), transparent 32%), var(--admin-surface); }
+.dz-admin__ai-hero { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; gap: 16px; padding: 4px 0 22px; border-bottom: 1px solid var(--admin-border); }
+.dz-admin__ai-orb { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 18px; color: #fff; background: linear-gradient(135deg, var(--admin-primary), var(--admin-cyan)); box-shadow: 0 12px 24px color-mix(in srgb, var(--admin-primary) 25%, transparent); }
+.dz-admin__ai-kicker { color: var(--admin-primary); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.dz-admin__ai-hero h2 { margin: 4px 0 5px; font-size: clamp(22px, 3vw, 30px); }
+.dz-admin__ai-hero p { max-width: 68ch; margin: 0; line-height: 1.55; }
+.dz-admin__ai-status { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--admin-success) 24%, var(--admin-border)); border-radius: 999px; color: var(--admin-success); background: color-mix(in srgb, var(--admin-success) 8%, transparent); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.dz-admin__ai-status i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 12%, transparent); }
+.dz-admin__ai-status.is-offline { border-color: color-mix(in srgb, var(--admin-warning) 28%, var(--admin-border)); color: var(--admin-warning); background: color-mix(in srgb, var(--admin-warning) 8%, transparent); }
+.dz-admin__ai-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.dz-admin__ai-metrics div { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface-soft); }
+.dz-admin__ai-metrics strong { font-size: 13px; }.dz-admin__ai-metrics span { color: var(--admin-text-muted); font-size: 11px; }
+.dz-admin__ai-suggestions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dz-admin__ai-suggestions > span { width: 100%; color: var(--admin-text-muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.dz-admin__ai-suggestions button { border-radius: 999px; padding-inline: 12px; color: var(--admin-primary); background: color-mix(in srgb, var(--admin-primary) 6%, var(--admin-surface)); font-size: 11px; }
+.dz-admin__ai-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--admin-border); border-radius: 10px; color: var(--admin-text-muted); background: var(--admin-surface-soft); font-size: 11px; }.dz-admin__ai-toolbar strong { color: var(--admin-text); }.dz-admin__ai-toolbar button { min-height: 30px; padding: 5px 9px; font-size: 11px; }
+.dz-admin__ai-conversation { display: grid; gap: 14px; max-height: 640px; overflow-y: auto; padding: clamp(16px, 2.4vw, 28px); border: 1px solid var(--admin-border); border-radius: 16px; background: color-mix(in srgb, var(--admin-surface-soft) 70%, var(--admin-surface)); scroll-behavior: smooth; }
+.dz-admin__ai-empty { display: grid; justify-items: center; gap: 8px; padding: 42px 18px; text-align: center; color: var(--admin-primary); }.dz-admin__ai-empty strong { color: var(--admin-text); font-size: 18px; }.dz-admin__ai-empty p { max-width: 48ch; margin: 0; line-height: 1.55; }
+.dz-admin__ai-message-group { display: grid; gap: 8px; }.dz-admin__ai-bubble { width: fit-content; max-width: min(82%, 780px); padding: 14px 17px; border-radius: 15px; }.dz-admin__ai-bubble span { display: flex; align-items: center; gap: 5px; margin-bottom: 7px; font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }.dz-admin__ai-bubble p { margin: 0; color: var(--admin-text); font-size: 15px; line-height: 1.7; }.dz-admin__ai-bubble p strong { color: var(--admin-primary); font-weight: 900; }.dz-admin__ai-bubble--user { justify-self: end; border-bottom-right-radius: 4px; background: color-mix(in srgb, var(--admin-primary) 13%, var(--admin-surface)); }.dz-admin__ai-bubble--user span { color: var(--admin-primary); }.dz-admin__ai-bubble--assistant { justify-self: start; border-bottom-left-radius: 4px; border: 1px solid var(--admin-border); background: var(--admin-surface); box-shadow: 0 7px 18px rgba(15,23,42,.06); }.dz-admin__ai-bubble--assistant span { color: var(--admin-primary); }
+.dz-admin__ai-sources { margin-left: 10px; padding-left: 12px; border-left: 2px solid var(--admin-border); color: var(--admin-text-muted); }.dz-admin__ai-sources summary { cursor: pointer; color: var(--admin-primary); font-size: 11px; font-weight: 900; letter-spacing: .04em; }.dz-admin__ai-sources ol { margin: 8px 0 0; padding-left: 20px; font-size: 11px; line-height: 1.45; }.dz-admin__ai-sources li + li { margin-top: 6px; }.dz-admin__ai-sources li strong, .dz-admin__ai-sources li small { display: block; }.dz-admin__ai-sources li small { margin-top: 2px; color: var(--admin-text-muted); }
+.dz-admin__ai-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; }.dz-admin__ai-composer label { min-width: 0; }.dz-admin__ai-composer textarea { min-height: 48px; max-height: 140px; resize: vertical; }.dz-admin__ai-composer button { min-width: 90px; min-height: 48px; }.dz-admin__sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .dz-admin__overview { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin: 0 0 18px; }
 .dz-admin__overview .dz-admin__card { min-height: 112px; display: flex; flex-direction: column; justify-content: space-between; }
 .dz-admin__overview span { color: var(--admin-text-muted); font-size: 12px; font-weight: 700; }
 .dz-admin__overview strong { color: var(--admin-text); font-size: 30px; letter-spacing: -.04em; }
+.dz-admin__kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.dz-admin__dashboard-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--admin-border); }
+.dz-admin__dashboard-controls > div { display: grid; gap: 3px; margin-right: auto; }
+.dz-admin__dashboard-controls > div span { color: var(--admin-text-muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.dz-admin__dashboard-controls > div strong { font-size: 18px; letter-spacing: -.02em; }
+.dz-admin__dashboard-controls label { min-width: 150px; }
+.dz-admin__kpi { position: relative; min-height: 112px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; padding: 16px; border: 1px solid var(--admin-border); border-radius: 14px; background: linear-gradient(145deg, var(--admin-surface-soft), var(--admin-surface)); }
+.dz-admin__kpi::after { position: absolute; right: -20px; bottom: -28px; width: 90px; height: 90px; border-radius: 50%; content: ''; background: color-mix(in srgb, var(--admin-primary) 15%, transparent); }
+.dz-admin__kpi span { color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }
+.dz-admin__kpi strong { font-size: 25px; letter-spacing: -.04em; }
+.dz-admin__kpi small { color: var(--admin-success); font-size: 10px; font-weight: 800; }
+.dz-admin__kpi--purple strong { color: #a78bfa; }.dz-admin__kpi--cyan strong { color: #22d3ee; }.dz-admin__kpi--red strong { color: #fb7185; }
+.dz-admin__dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .8fr); gap: 14px; margin-bottom: 22px; }
+.dz-admin__dashboard-grid > * { min-width: 0; }
+.dz-admin__inner-card { min-width: 0; padding: 18px; border: 1px solid var(--admin-border); border-radius: 14px; background: var(--admin-surface-soft); }
+.dz-admin__inner-card h2 { margin-bottom: 3px; }.dz-admin__inner-card p { margin: 0; }
+.dz-admin__badge { align-self: flex-start; padding: 6px 8px; border: 1px solid var(--admin-border); border-radius: 7px; color: var(--admin-text-muted); font-size: 10px; font-weight: 800; }
+.dz-admin__bars { display: grid; gap: 14px; margin-top: 24px; }.dz-admin__bar-row { display: grid; grid-template-columns: 78px minmax(0, 1fr) max-content; align-items: center; gap: 10px; min-width: 0; color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }.dz-admin__bar-row span { white-space: nowrap; }.dz-admin__bar-row div { min-width: 0; height: 9px; overflow: hidden; border-radius: 99px; background: var(--admin-border); }.dz-admin__bar-row i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--admin-primary), var(--admin-cyan)); }.dz-admin__bar-row strong { color: var(--admin-text); text-align: right; white-space: nowrap; }
+.dz-admin__activity { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--admin-border); }.dz-admin__activity:first-of-type { margin-top: 14px; }.dz-admin__activity-avatar { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: linear-gradient(135deg, var(--admin-primary), var(--admin-cyan)); font-size: 12px; font-weight: 900; }.dz-admin__activity div { display: grid; gap: 3px; min-width: 0; }.dz-admin__activity strong { color: var(--admin-text); font-size: 12px; }.dz-admin__activity small { color: var(--admin-text-muted); font-size: 10px; }.dz-admin__activity b { margin-left: auto; color: var(--admin-text-muted); font-size: 10px; }
 
 .dz-admin__toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 9px; margin: 16px 0; padding: 10px; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface); }
 .dz-admin__toolbar label { margin-left: auto; min-width: 220px; }
@@ -248,6 +309,16 @@
 .dz-admin__lead button { margin: 6px 8px 0 0; border: 1px solid var(--admin-border); border-radius: 8px; padding: 8px 10px; background: var(--admin-surface); color: var(--admin-primary); }
 .dz-admin__lead strong { color: var(--admin-text); }
 .dz-admin__lead p { margin: 5px 0; }
+.dz-admin__section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.dz-admin__section-heading p { margin-top: 0; }
+.dz-admin__count { flex: 0 0 auto; padding: 6px 9px; border: 1px solid var(--admin-border); border-radius: 999px; color: var(--admin-text-muted); font-size: 11px; font-weight: 800; }
+.dz-admin__trash-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--admin-border); }
+.dz-admin__trash-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--admin-danger); background: color-mix(in srgb, var(--admin-danger) 10%, transparent); }
+.dz-admin__trash-item strong { color: var(--admin-text); font-size: 13px; }
+.dz-admin__trash-item p { margin: 4px 0 0; }
+.dz-admin__danger-button { color: var(--admin-danger) !important; }
+.dz-admin__billing-create { align-items: end; margin-top: 20px; padding: 14px; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface-soft); }
+.dz-admin__billing-actions { white-space: nowrap; }.dz-admin__billing-actions button { margin-right: 5px; }.dz-admin__status-pill { display: inline-flex; padding: 4px 7px; border-radius: 999px; color: var(--admin-success); background: color-mix(in srgb, var(--admin-success) 12%, transparent); font-size: 10px; font-weight: 800; }.dz-admin__billing-note { padding: 12px 14px; border-left: 3px solid var(--admin-warning); border-radius: 4px; background: color-mix(in srgb, var(--admin-warning) 8%, transparent); }.dz-admin__empty-state { padding: 22px; border: 1px dashed var(--admin-border); border-radius: 12px; text-align: center; }
 
 .dz-admin__shell.is-collapsed { --admin-sidebar-width: 72px; }
 .dz-admin__shell.is-collapsed .dz-admin__nav-group > span,
@@ -259,13 +330,29 @@
 
 @media (max-width: 1100px) {
   .dz-admin__overview { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .dz-admin__kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .dz-admin__shell { --admin-sidebar-width: 72px; }
   .dz-admin__main { margin-left: 72px; }
+  .dz-admin__header { padding-inline: 20px; }
+  .dz-admin__workspace { padding: 22px 20px 34px; }
+  .dz-admin__dashboard-grid { grid-template-columns: minmax(0, 1fr); }
   .dz-admin__nav-group > span, .dz-admin__nav-group button span, .dz-admin__collapse span { display: none; }
   .dz-admin__nav-group button, .dz-admin__collapse { justify-content: center; padding-inline: 0; }
 }
 
+@media (max-width: 1280px) {
+  .dz-admin__dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 720px) {
+  .dz-admin__login-layout { width: min(520px, calc(100% - 24px)); min-height: 100vh; grid-template-columns: 1fr; align-content: start; gap: 22px; padding: 28px 0 34px; }
+  .dz-admin__login-aside { gap: 10px; text-align: center; justify-items: center; }
+  .dz-admin__login-aside .brand__logo { width: 190px; margin-bottom: 4px; }
+  .dz-admin__login-aside-kicker { font-size: 10px; }
+  .dz-admin__login-aside h1 { max-width: 18ch; font-size: clamp(30px, 9vw, 42px); }
+  .dz-admin__login-aside p { font-size: 14px; line-height: 1.45; }
+  .dz-admin__login-aside-points { font-size: 12px; }
+  .dz-admin__login { width: 100%; padding: 24px 20px; gap: 18px; border-radius: 18px; }
   .dz-admin__top { height: 58px; padding: 8px 12px; }
   .dz-admin__top .brand__logo { width: 112px; }
   .dz-admin__demo { display: none; }
@@ -284,16 +371,219 @@
   .dz-admin__nav-group button, .dz-admin__collapse { justify-content: flex-start; padding-inline: 12px; }
   .dz-admin__main { margin-left: 0; }
   .dz-admin__header { top: 58px; height: 58px; padding: 0 12px; }
+  .dz-admin__global-search { display: none; }
   .dz-admin__menu { display: grid !important; width: 38px; height: 38px; place-items: center; border: 1px solid var(--admin-border); border-radius: 9px; background: var(--admin-surface); color: var(--admin-text); }
   .dz-admin__workspace { padding: 18px 12px 40px; }
-  .dz-admin__page-heading h1 { font-size: 24px; }
+  .dz-admin__page-heading { align-items: flex-start; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .dz-admin__page-heading h1 { font-size: clamp(22px, 7vw, 28px); }
   .dz-admin__overview { grid-template-columns: 1fr; }
+  .dz-admin__kpi-grid, .dz-admin__dashboard-grid { grid-template-columns: 1fr; }
   .dz-admin__header-actions button:first-child { display: none; }
   .dz-admin__breadcrumb span { display: none; }
   .dz-admin__breadcrumb span::after { display: none; }
   .dz-admin__toolbar label { width: 100%; margin-left: 0; }
+  .dz-admin__toolbar { align-items: stretch; padding: 8px; }
+  .dz-admin__toolbar button { flex: 1 1 auto; }
+  .dz-admin__toolbar label { order: 3; }
+  .dz-admin__dashboard-controls { align-items: stretch; }
+  .dz-admin__dashboard-controls > div { width: 100%; margin-right: 0; }
+  .dz-admin__dashboard-controls label, .dz-admin__dashboard-controls button { flex: 1 1 145px; min-width: 0; }
+  .dz-admin__card { padding: 15px; border-radius: 12px; }
+  .dz-admin__ai-panel { gap: 16px; }
+  .dz-admin__ai-hero { grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
+  .dz-admin__ai-status { grid-column: 1 / -1; justify-self: start; }
+  .dz-admin__ai-metrics { grid-template-columns: 1fr; }
+  .dz-admin__ai-suggestions { align-items: stretch; }
+  .dz-admin__ai-suggestions button { width: 100%; text-align: left; }
+  .dz-admin__dashboard-grid { gap: 12px; }
+  .dz-admin__inner-card { padding: 14px; }
+  .dz-admin__bar-row { grid-template-columns: 48px minmax(0, 1fr); gap: 7px; }
+  .dz-admin__bar-row strong { grid-column: 2; text-align: left; font-size: 11px; }
+  .dz-admin__bars { gap: 12px; margin-top: 18px; }
+  .dz-admin__section-heading { flex-direction: column; gap: 8px; }
+  .dz-admin__section-heading > button, .dz-admin__section-heading > .dz-admin__count { align-self: flex-start; }
+  .dz-admin__activity { align-items: flex-start; flex-wrap: wrap; }
+  .dz-admin__activity button { margin-left: 40px; }
+  .dz-admin__table { margin-inline: -1px; }
+  .dz-admin table { min-width: 600px; }
+  .dz-admin th, .dz-admin td { padding: 10px 11px; }
+  .dz-admin__demo-login { grid-template-columns: 1fr; }
+  .dz-admin__demo-login code { justify-self: start; }
+  .dz-admin__error { top: 68px; right: 16px; }
+}
+
+@media (max-width: 420px) {
+  .dz-admin__top { gap: 8px; }
+  .dz-admin__top .brand__logo { width: 104px; }
+  .dz-admin__top button { padding: 8px 9px; font-size: 12px; }
+  .dz-admin__breadcrumb { font-size: 12px; }
+  .dz-admin__header-actions { gap: 5px; }
+  .dz-admin__header-actions button, .dz-admin__menu { width: 34px; height: 34px; }
+  .dz-admin__avatar { width: 34px; height: 34px; }
+  .dz-admin__workspace { padding-inline: 10px; }
+  .dz-admin__kpi { min-height: 96px; padding: 13px; }
+  .dz-admin__kpi strong { font-size: 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dz-admin * { transition: none !important; animation: none !important; }
+}
+
+/* Refinamiento visual del panel: más profundidad, jerarquía y lectura rápida. */
+.dz-admin {
+  background:
+    radial-gradient(circle at 88% -12%, color-mix(in srgb, var(--admin-primary) 9%, transparent), transparent 34%),
+    var(--admin-bg);
+  letter-spacing: -.008em;
+}
+.dz-admin ::selection { color: #fff; background: var(--admin-primary); }
+.dz-admin ::-webkit-scrollbar { width: 10px; height: 10px; }
+.dz-admin ::-webkit-scrollbar-track { background: color-mix(in srgb, var(--admin-surface-soft) 70%, transparent); }
+.dz-admin ::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background: color-mix(in srgb, var(--admin-text-muted) 42%, transparent); background-clip: padding-box; }
+.dz-admin ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--admin-primary) 66%, transparent); background-clip: padding-box; }
+.dz-admin__top {
+  box-shadow: 0 8px 28px rgba(15, 23, 42, .045);
+}
+.dz-admin__top button,
+.dz-admin__header-actions button,
+.dz-admin__menu {
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.dz-admin__top button:hover:not(:disabled),
+.dz-admin__header-actions button:hover:not(:disabled),
+.dz-admin__menu:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--admin-primary) 12%, transparent);
+}
+.dz-admin__sidebar {
+  background: linear-gradient(180deg, var(--admin-surface), color-mix(in srgb, var(--admin-surface-soft) 28%, var(--admin-surface)));
+  box-shadow: 8px 0 28px rgba(15, 23, 42, .025);
+}
+.dz-admin__nav-group button {
+  position: relative;
+  min-height: 46px;
+  transition: transform .18s ease, background .18s ease, color .18s ease;
+}
+.dz-admin__nav-group button:hover:not(:disabled) { transform: translateX(2px); }
+.dz-admin__nav-group button[aria-pressed="true"] {
+  box-shadow: inset 3px 0 0 var(--admin-primary), 0 8px 18px color-mix(in srgb, var(--admin-primary) 8%, transparent);
+}
+.dz-admin__workspace { padding-top: 34px; }
+.dz-admin__workspace::before {
+  display: block;
+  height: 1px;
+  margin: -8px 0 26px;
+  content: '';
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--admin-primary) 28%, var(--admin-border)), transparent);
+}
+.dz-admin__page-heading { margin-bottom: 24px; }
+.dz-admin__page-heading h1 { font-size: clamp(30px, 3vw, 42px); letter-spacing: -.055em; }
+.dz-admin__page-heading > div > span { font-size: 13px; letter-spacing: .02em; }
+.dz-admin__page-heading--hero { align-items: center; margin-bottom: 20px; }
+.dz-admin__heading-actions { display: flex; align-items: center; gap: 10px; }
+.dz-admin__live-status { display: inline-flex; align-items: center; gap: 7px; padding: 9px 12px; border: 1px solid color-mix(in srgb, var(--admin-success) 22%, var(--admin-border)); border-radius: 999px; color: var(--admin-success); background: color-mix(in srgb, var(--admin-success) 7%, var(--admin-surface)); font-size: 11px; font-weight: 800; }
+.dz-admin__live-status i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 14%, transparent); }
+.dz-admin__dashboard-card { padding: 24px; border-radius: 22px; background: linear-gradient(145deg, color-mix(in srgb, var(--admin-primary) 3%, var(--admin-surface)), var(--admin-surface)); }
+.dz-admin__dashboard-intro { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 22px; padding: 22px; border: 1px solid color-mix(in srgb, var(--admin-primary) 17%, var(--admin-border)); border-radius: 18px; background: radial-gradient(circle at 100% 0, color-mix(in srgb, var(--admin-cyan) 15%, transparent), transparent 34%), linear-gradient(135deg, color-mix(in srgb, var(--admin-primary) 9%, var(--admin-surface)), var(--admin-surface)); }
+.dz-admin__dashboard-intro span { color: var(--admin-primary); font-size: 11px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
+.dz-admin__dashboard-intro h2 { margin: 5px 0 4px; font-size: clamp(22px, 3vw, 30px); letter-spacing: -.045em; }
+.dz-admin__dashboard-intro p { margin: 0; color: var(--admin-text-muted); font-size: 13px; }
+.dz-admin__dashboard-mark { width: 68px; height: 68px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 20px; color: #fff; background: linear-gradient(145deg, var(--admin-primary), var(--admin-cyan)); box-shadow: 0 14px 26px color-mix(in srgb, var(--admin-primary) 25%, transparent); font-size: 18px; font-weight: 950; letter-spacing: -.1em; }
+.dz-admin__dashboard-mark span { margin-left: 2px; color: rgba(255,255,255,.72); font-size: 9px; letter-spacing: .06em; }
+.dz-admin__card,
+.dz-admin__inner-card,
+.dz-admin__kpi {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, .045);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.dz-admin__kpi--blue { background: linear-gradient(145deg, color-mix(in srgb, var(--admin-primary) 7%, var(--admin-surface)), var(--admin-surface)); }
+.dz-admin__kpi--purple { background: linear-gradient(145deg, color-mix(in srgb, #8b5cf6 8%, var(--admin-surface)), var(--admin-surface)); }
+.dz-admin__kpi--cyan { background: linear-gradient(145deg, color-mix(in srgb, var(--admin-cyan) 8%, var(--admin-surface)), var(--admin-surface)); }
+.dz-admin__kpi--red { background: linear-gradient(145deg, color-mix(in srgb, #fb7185 7%, var(--admin-surface)), var(--admin-surface)); }
+.dz-admin__card:hover,
+.dz-admin__inner-card:hover,
+.dz-admin__kpi:hover {
+  border-color: color-mix(in srgb, var(--admin-primary) 22%, var(--admin-border));
+  box-shadow: 0 16px 36px rgba(15, 23, 42, .075);
+}
+.dz-admin__kpi-grid { gap: 16px; }
+.dz-admin__kpi {
+  min-height: 132px;
+  padding: 19px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--admin-surface), color-mix(in srgb, var(--admin-primary) 4%, var(--admin-surface-soft)));
+}
+.dz-admin__kpi::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  content: '';
+  background: linear-gradient(90deg, var(--admin-primary), var(--admin-cyan));
+}
+.dz-admin__kpi span { font-size: 12px; letter-spacing: .01em; }
+.dz-admin__kpi strong { font-size: clamp(25px, 2.4vw, 34px); }
+.dz-admin__kpi small { font-size: 11px; }
+.dz-admin__dashboard-controls {
+  margin: -4px -4px 22px;
+  padding: 12px 4px 18px;
+}
+.dz-admin__dashboard-controls select { min-height: 40px; background: var(--admin-surface); }
+.dz-admin__dashboard-controls label { color: var(--admin-text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; }
+.dz-admin__dashboard-controls label select { margin-top: 2px; color: var(--admin-text); font-size: 13px; text-transform: none; letter-spacing: 0; }
+.dz-admin__dashboard-grid { gap: 18px; margin-bottom: 24px; }
+.dz-admin__inner-card {
+  padding: 22px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--admin-surface-soft), color-mix(in srgb, var(--admin-surface) 76%, var(--admin-surface-soft)));
+}
+.dz-admin__inner-card h2 { font-size: 20px; }
+.dz-admin__inner-card p { line-height: 1.5; }
+.dz-admin__bars { gap: 16px; margin-top: 28px; }
+.dz-admin__bar-row { grid-template-columns: 88px minmax(0, 1fr) max-content; font-size: 12px; }
+.dz-admin__bar-row div { height: 11px; background: color-mix(in srgb, var(--admin-border) 80%, var(--admin-surface)); }
+.dz-admin__bar-row i { box-shadow: 0 0 12px color-mix(in srgb, var(--admin-cyan) 28%, transparent); }
+.dz-admin__activity { padding: 14px 0; }
+.dz-admin__activity-avatar { width: 36px; height: 36px; box-shadow: 0 7px 16px color-mix(in srgb, var(--admin-primary) 20%, transparent); }
+.dz-admin__activity strong { font-size: 13px; }
+.dz-admin__activity small { font-size: 11px; }
+.dz-admin__section-heading button,
+.dz-admin__dashboard-controls button,
+.dz-admin__toolbar button {
+  min-height: 38px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+.dz-admin__section-heading button:hover,
+.dz-admin__dashboard-controls button:hover,
+.dz-admin__toolbar button:hover { transform: translateY(-1px); }
+.dz-admin__status-pill { border: 1px solid color-mix(in srgb, var(--admin-success) 20%, transparent); }
+.dz-admin__table { box-shadow: 0 8px 22px rgba(15, 23, 42, .04); }
+.dz-admin thead th { padding-top: 15px; padding-bottom: 15px; }
+.dz-admin tbody tr { transition: background .16s ease; }
+.dz-admin tbody tr:hover { background: color-mix(in srgb, var(--admin-primary) 4%, var(--admin-surface)); }
+.dz-admin__error { backdrop-filter: blur(12px); }
+
+[data-admin-theme="dark"] .dz-admin {
+  background: radial-gradient(circle at 88% -12%, rgba(37, 99, 235, .16), transparent 38%), var(--admin-bg);
+}
+[data-admin-theme="dark"] .dz-admin__top,
+[data-admin-theme="dark"] .dz-admin__header { box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+[data-admin-theme="dark"] .dz-admin__card:hover,
+[data-admin-theme="dark"] .dz-admin__inner-card:hover,
+[data-admin-theme="dark"] .dz-admin__kpi:hover { box-shadow: 0 18px 38px rgba(0, 0, 0, .22); }
+
+@media (max-width: 720px) {
+  .dz-admin__workspace { padding-top: 22px; }
+  .dz-admin__page-heading h1 { font-size: 30px; }
+  .dz-admin__page-heading--hero { gap: 14px; }
+  .dz-admin__heading-actions { width: 100%; flex-wrap: wrap; }
+  .dz-admin__heading-actions .dz-admin__primary { flex: 1; }
+  .dz-admin__dashboard-card { padding: 15px; border-radius: 16px; }
+  .dz-admin__dashboard-intro { align-items: flex-start; padding: 17px; }
+  .dz-admin__dashboard-mark { width: 48px; height: 48px; border-radius: 14px; font-size: 14px; }
+  .dz-admin__kpi { min-height: 118px; }
+  .dz-admin__inner-card { padding: 17px; }
+  .dz-admin__bar-row { grid-template-columns: 62px minmax(0, 1fr); }
 }

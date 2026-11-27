@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { google } from 'googleapis';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
@@ -38,23 +38,29 @@ export function driveStatus() {
 }
 export function issueOAuthState() {
   const state = randomBytes(24).toString('hex');
-  oauthStates.set(state, Date.now() + 10 * 60 * 1000);
+  const verifier = randomBytes(48).toString('base64url');
+  oauthStates.set(state, { expiresAt: Date.now() + 10 * 60 * 1000, verifier, challenge: createHash('sha256').update(verifier).digest('base64url') });
   return state;
 }
 export function consumeOAuthState(state) {
-  const expiry = oauthStates.get(state);
+  const entry = oauthStates.get(state);
+  if (!entry || entry.expiresAt <= Date.now()) { oauthStates.delete(state); return null; }
+  // Compatibilidad con el callback anterior: la primera comprobación valida y la segunda consume.
+  if (!entry.checked) { entry.checked = true; return entry; }
   oauthStates.delete(state);
-  return Boolean(expiry && expiry > Date.now());
+  return entry;
 }
 export function driveAuthorizationUrl(state) {
   const client = oauthClient();
+  const entry = oauthStates.get(state);
   if (!client) throw new Error('Faltan GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET o GOOGLE_REDIRECT_URI');
-  return client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope, state });
+  if (!entry || entry.expiresAt <= Date.now()) throw new Error('Estado OAuth inválido o vencido');
+  return client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope, state, code_challenge: entry.challenge, code_challenge_method: 'S256' });
 }
-export async function saveDriveCallback(pool, code) {
+export async function saveDriveCallback(pool, code, codeVerifier) {
   const client = oauthClient();
   if (!client) throw new Error('OAuth de Google no configurado');
-  const { tokens } = await client.getToken(code);
+  const { tokens } = await client.getToken({ code, codeVerifier });
   await pool.execute(`INSERT INTO google_drive_connections (id, folder_id, encrypted_tokens, status, updated_at)
     VALUES (1, ?, ?, 'connected', UTC_TIMESTAMP())
     ON DUPLICATE KEY UPDATE folder_id=VALUES(folder_id), encrypted_tokens=VALUES(encrypted_tokens), status='connected', updated_at=UTC_TIMESTAMP()`,
